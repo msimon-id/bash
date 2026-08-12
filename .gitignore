@@ -1,0 +1,24 @@
+# ---- Secrets / SSH ----------------------------------------------------
+# Niemals private Keys, Passphrasen oder Agent-Sockets versionieren.
+.ssh/
+id_rsa*
+id_ed25519*
+id_github_system_id*
+*.pem
+*.key
+*.p12
+*_history
+
+# ---- Backups (siehe bashsave-Alias) ------------------------------------
+.bashrc.backup.*
+*.bak
+
+# ---- Editor- / OS-Artefakte ---------------------------------------------
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ---- Claude Code lokale Session-/Projektdaten ---------------------------
+.claude/
