@@ -1,16 +1,90 @@
-# 1. Alles ignorieren
+# ============================
+# 1. Alles ignorieren, Verzeichnisse für Rekursion erlauben
+# ============================
 *
-
-# 2. Alle Verzeichnisse wieder erlauben (sonst wird nicht rekursiert)
 !*/
 
-# 3. Gezielt Dateitypen/Dateien whitelisten
+# ============================
+# 2. Whitelist (Beispiel)
+# ============================
 !*.sh
-!*.py
-!README.md
+!*.md
 !.gitignore
+!LICENSE
+!lib/
+!lib/**/*.sh
+!tests/
+!tests/**/*.sh
+!scripts/
+!scripts/**/*.sh
+
+# ============================
+# 3. Explizit ausschließen (überschreibt Whitelist)
+# ============================
+
+# --- Secrets & Konfiguration mit sensiblen Daten ---
+*.env
+.env.*
+*.pem
+*.key
+*.crt
+*secret*
+*credential*
+config.local.sh
+.secrets/
+
+# --- ShellCheck / Linting Cache ---
+.shellcheckrc.local
+.cache/
+
+# --- Editor / IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- OS-generierte Dateien ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Logs & Laufzeit-Artefakte ---
+*.log
+*.pid
+*.lock
+/tmp/
+*.tmp
+
+# --- Test-/Coverage-Output ---
+coverage/
+*.bats.log
+test-results/
+kcov-output/
+
+# --- Backup- & temporäre Editor-Dateien ---
+*.bak
+*.orig
+*.rej
+
+# --- Lokale Overrides ---
+*.local.sh
+.env.local
+
+# --- Paketmanager-Reste (falls z. B. bats via npm/git-submodule) ---
+node_modules/
+vendor/bats-core/
+vendor/bats-support/
+vendor/bats-assert/
 
 # 4. Verzeichnisse, die trotzdem komplett raus sollen (z.B. Build-Output)
 node_modules/
 venv/
 *.log
+*.md
+.claude/
+.git/
+id_*
+*.crt
+*.key
+*.pem
