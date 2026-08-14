@@ -417,39 +417,45 @@ fi
 # Ad-hoc-Aufrufe der dort installierten Tools, mit denselben Configs und
 # demselben Report-Verzeichnis wie in den tasks/*.yml der Rolle - become
 # nur dort, wo die Rolle selbst become:true nutzt (lynis, trivy-image,
-# sbom), der Rest läuft bewusst ohne sudo (Least Privilege).
-export SEC_REPORT_DIR=/opt/ansible/docs/security-reports
-export SEC_TARGET=/opt/ansible
+# sbom), der Rest läuft bewusst ohne sudo (Least Privilege). Setzt die
+# private Ansible-Rolle security_pipeline voraus (siehe bashrc.d/README.md,
+# Abschnitt "SECURITY PIPELINE") - ohne sie bleibt dieser gesamte Block
+# folgenlos uebersprungen, statt kaputte Aliase auf fremden Maschinen zu
+# exportieren.
+if [ -d /opt/ansible/roles/security_pipeline ]; then
+    export SEC_REPORT_DIR=/opt/ansible/docs/security-reports
+    export SEC_TARGET=/opt/ansible
 
-if [ -f /etc/debian_version ]; then
-    SEC_ENGINE=docker
-else
-    SEC_ENGINE=podman
+    if [ -f /etc/debian_version ]; then
+        SEC_ENGINE=docker
+    else
+        SEC_ENGINE=podman
+    fi
+
+    alias sec-reports='cd "$SEC_REPORT_DIR"'
+
+    # SAST / IaC / Policy / Lint (ohne become)
+    alias bandit-scan='bandit -r "$SEC_TARGET" -f json -o "$SEC_REPORT_DIR/bandit-report.json" -c /opt/ansible/.bandit.yml'
+    alias checkov-scan='/usr/local/bin/checkov -d "$SEC_TARGET" --framework ansible --compact --output json --output-file-path "$SEC_REPORT_DIR"'
+    alias conftest-scan='/usr/local/bin/conftest test --policy /opt/ansible/policy --all-namespaces --output json "$SEC_TARGET"'
+    alias yamllint-scan='/usr/local/bin/yamllint --format parsable -c /opt/ansible/.yamllint "$SEC_TARGET"'
+    alias ansible-lint-scan='/usr/local/bin/ansible-lint --project-dir /opt/ansible -c /opt/ansible/.ansible-lint --format json "$SEC_TARGET"'
+
+    # Secrets (ohne become)
+    alias gitleaks-scan='/usr/local/bin/gitleaks dir "$SEC_TARGET" --config /opt/ansible/.gitleaks.toml --report-format json --report-path "$SEC_REPORT_DIR/gitleaks-dir-report.json" --exit-code 1 --no-banner --redact'
+    alias gitleaks-history='/usr/local/bin/gitleaks detect --source "$SEC_TARGET" --config /opt/ansible/.gitleaks.toml --report-format json --report-path "$SEC_REPORT_DIR/gitleaks-history-report.json" --exit-code 1 --no-banner --redact'
+
+    # CVE-Scans (trivy fs ohne become, trivy image mit - siehe Rollenkommentar)
+    alias trivy-fs='/usr/local/bin/trivy fs --scanners vuln --severity CRITICAL,HIGH --timeout 30m --format json --exit-code 1'
+    alias trivy-image='sudo /usr/local/bin/trivy image --severity CRITICAL,HIGH --timeout 5m --format json'
+    alias trivy-images-list='$SEC_ENGINE images --format "{{.Repository}}:{{.Tag}}"'
+
+    # SBOM / Systemhärtung (mit become, wie in der Rolle)
+    alias sbom-host='sudo /usr/local/bin/syft scan dir:/ --exclude ./proc/** --exclude ./sys/** --exclude ./dev/** --exclude ./run/** --exclude ./tmp/** --exclude ./var/tmp/** --exclude ./var/lib/docker/** --exclude ./var/lib/containers/** -o cyclonedx-json="$SEC_REPORT_DIR/sbom/host-sbom.json"'
+    alias sbom-image='sudo /usr/local/bin/syft scan $SEC_ENGINE:'
+    alias lynis-scan='sudo lynis audit system --quiet'
+    alias lynis-score='grep "hardening_index=" /var/log/lynis-report.dat | cut -d= -f2'
 fi
-
-alias sec-reports='cd "$SEC_REPORT_DIR"'
-
-# SAST / IaC / Policy / Lint (ohne become)
-alias bandit-scan='bandit -r "$SEC_TARGET" -f json -o "$SEC_REPORT_DIR/bandit-report.json" -c /opt/ansible/.bandit.yml'
-alias checkov-scan='/usr/local/bin/checkov -d "$SEC_TARGET" --framework ansible --compact --output json --output-file-path "$SEC_REPORT_DIR"'
-alias conftest-scan='/usr/local/bin/conftest test --policy /opt/ansible/policy --all-namespaces --output json "$SEC_TARGET"'
-alias yamllint-scan='/usr/local/bin/yamllint --format parsable -c /opt/ansible/.yamllint "$SEC_TARGET"'
-alias ansible-lint-scan='/usr/local/bin/ansible-lint --project-dir /opt/ansible -c /opt/ansible/.ansible-lint --format json "$SEC_TARGET"'
-
-# Secrets (ohne become)
-alias gitleaks-scan='/usr/local/bin/gitleaks dir "$SEC_TARGET" --config /opt/ansible/.gitleaks.toml --report-format json --report-path "$SEC_REPORT_DIR/gitleaks-dir-report.json" --exit-code 1 --no-banner --redact'
-alias gitleaks-history='/usr/local/bin/gitleaks detect --source "$SEC_TARGET" --config /opt/ansible/.gitleaks.toml --report-format json --report-path "$SEC_REPORT_DIR/gitleaks-history-report.json" --exit-code 1 --no-banner --redact'
-
-# CVE-Scans (trivy fs ohne become, trivy image mit - siehe Rollenkommentar)
-alias trivy-fs='/usr/local/bin/trivy fs --scanners vuln --severity CRITICAL,HIGH --timeout 30m --format json --exit-code 1'
-alias trivy-image='sudo /usr/local/bin/trivy image --severity CRITICAL,HIGH --timeout 5m --format json'
-alias trivy-images-list='$SEC_ENGINE images --format "{{.Repository}}:{{.Tag}}"'
-
-# SBOM / Systemhärtung (mit become, wie in der Rolle)
-alias sbom-host='sudo /usr/local/bin/syft scan dir:/ --exclude ./proc/** --exclude ./sys/** --exclude ./dev/** --exclude ./run/** --exclude ./tmp/** --exclude ./var/tmp/** --exclude ./var/lib/docker/** --exclude ./var/lib/containers/** -o cyclonedx-json="$SEC_REPORT_DIR/sbom/host-sbom.json"'
-alias sbom-image='sudo /usr/local/bin/syft scan $SEC_ENGINE:'
-alias lynis-scan='sudo lynis audit system --quiet'
-alias lynis-score='grep "hardening_index=" /var/log/lynis-report.dat | cut -d= -f2'
 
 # ----[ 21. CIS / SECURITY HARDENING TOOLS ]------------------
 
