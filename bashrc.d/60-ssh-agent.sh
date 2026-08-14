@@ -1,6 +1,7 @@
 # ==============================================================================
 #  System_ID
 # ------------------------------------------------------------------------------
+# shellcheck shell=bash
 #  Datei         : 60-ssh-agent.sh
 #  Beschreibung  : Startet bei Bedarf einen ssh-agent und laedt die
 #                  persoenlichen SSH-Keys, falls noch keiner geladen ist.

@@ -1,6 +1,7 @@
 # ==============================================================================
 #  System_ID
 # ------------------------------------------------------------------------------
+# shellcheck shell=bash
 #  Datei         : 80-tools.sh
 #  Beschreibung  : Bindet die per install.sh installierten System_ID-Tools
 #                  (siehe Repo tools/) als Shell-Funktionen ein. Jede

@@ -1,6 +1,7 @@
 # ==============================================================================
 #  System_ID
 # ------------------------------------------------------------------------------
+# shellcheck shell=bash
 #  Datei         : 90-prompt.sh
 #  Beschreibung  : Terminalfarben, dynamischer Prompt mit Exitcode-Anzeige
 #                  sowie farbige ls/grep-Aliase. Wird zuletzt geladen, damit
@@ -10,6 +11,25 @@
 #  Unternehmen   : System_ID
 # ==============================================================================
 
+# Farbvariablen zum selber Aendern: Wer die Farben von Prompt/ls/grep
+# anpassen will, muss diese Datei NICHT verstehen - es reicht, den Zahlenwert
+# hinter '38;5;' einer der Variablen unten zu ersetzen, z.B.
+#   GREEN="\[\033[38;5;46m\]"   ->   GREEN="\[\033[38;5;34m\]"
+# Die Zahl (0-255) ist ein Farbcode aus der 256-Farben-Palette des
+# Terminals - eine vollstaendige Tabelle mit allen Codes und ihren
+# tatsaechlichen Farben gibt es z.B. unter "xterm 256 color chart"
+# (Suchbegriff, verlinkt hier bewusst keine externe URL). Nach dem Aendern
+# reicht 'reload' (Alias aus Abschnitt 16) oder ein neues Terminal.
+#
+# Absichtlich mehr Farben definiert (BLUE, MAGENTA, ORANGE, GOLD, ...) als
+# im Prompt unten tatsaechlich verwendet werden: diese Datei ist die zentrale,
+# vorbereitete Auswahl fuer eigene Anpassungen (Prompt oben, oder eigene
+# Aliase/Funktionen in bashrc.d/) - lieber eine fertige Variable mit
+# passendem Namen zum Eintauschen bereitstellen, als dass jeder Nutzer dafuer
+# erst selbst einen neuen Escape-Code nachschlagen und eine neue Variable
+# anlegen muss. Deshalb hier gezielt und bewusst von ShellCheck (SC2034,
+# "ungenutzte Variable") abgesehen.
+# shellcheck disable=SC2034
 if [ -t 1 ]; then
     # 256-Farben (portabler, flexibler)
     RED="\[\033[38;5;196m\]"
@@ -65,18 +85,9 @@ PROMPT_COMMAND+='${RET:+${YELLOW}[${RED}${RET}${YELLOW}]${RESET} }${RESET}\n\\$ 
 if [ -x /usr/bin/dircolors ]; then
     test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
     alias ls='ls --color=auto'
-    #alias dir='dir --color=auto'
-    #alias vdir='vdir --color=auto'
-
     alias grep='grep --color=auto'
     alias fgrep='fgrep --color=auto'
     alias egrep='egrep --color=auto'
 fi
 
-# colored GCC warnings and errors
-#export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
-
-# some more ls aliase
-#alias ll='ls -l'
-#alias la='ls -A'
-#alias l='ls -CF'
+# ll/la/l: siehe bashrc.d/10-aliases.sh (Abschnitt 16)

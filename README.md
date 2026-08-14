@@ -13,7 +13,8 @@ install.sh               # Installiert bashrc.d/*.sh nach $HOME, haengt Loader a
 tools/
 ├── lib/lib_common.sh     # Gemeinsame Basisfunktionen (Logging, Cleanup-Trap, Retry, Validierung)
 ├── externalip/            # Ermittelt oeffentliche IPv4/IPv6 + PTR-Hostname
-└── speedtest/             # Bandbreiten-/Latenztest (Cloudflare/Ookla, ohne Fremdcode-Ausfuehrung)
+├── speedtest/             # Bandbreiten-/Latenztest (Cloudflare/Ookla, ohne Fremdcode-Ausfuehrung)
+└── security/              # Pre-Push-Sicherheitspruefungen (Rechte haerten, Secrets scannen)
 ```
 
 ## Installation
@@ -50,6 +51,32 @@ zusätzlich nach `~/.local/lib/system_id/tools/bash/` installiert und durch
 eingebunden (`externalip`, `speedtest`) - ohne Installation bleiben diese
 Kommandonamen einfach unbekannt, kein Fehler beim Shellstart. Details je Tool
 im Kopfkommentar der jeweiligen Datei.
+
+## Sicherheits-Tooling (Pre-Push)
+
+Unter `tools/security/` liegt eine dreiteilige Pruefkette, die vor einem
+`git push` laufen soll:
+
+- `check_permissions.sh` prueft und haertet Datei-/Verzeichnisrechte im
+  Arbeitsbaum (Verzeichnisse `2770`, als ausfuehrbar markierte Dateien
+  `0770`, sonstige Dateien `0660`, geheimnisverdaechtige Dateien wie
+  `*.pem`/`.env`/`*credential*` immer `0600`). Erkennt zusaetzlich Symlinks,
+  die aus dem Repository herauszeigen, als Sicherheitsproblem.
+- `scan_secrets.sh` durchsucht die komplette Commit-Historie mit `gitleaks`
+  nach versehentlich committeten Geheimnissen.
+- `pre-push.sh` orchestriert beide Schritte und bricht beim ersten
+  Fehlschlag ab (der Push wird dann von git selbst verhindert).
+
+Als echten Git-Hook einbinden (pro lokalem Klon, `.git/hooks` wird nicht
+mitversioniert):
+
+```bash
+ln -sf ../../tools/security/pre-push.sh .git/hooks/pre-push
+```
+
+Jedes Teilskript ist auch einzeln aufrufbar, z. B.
+`./tools/security/check_permissions.sh --check-only` fuer eine reine
+Pruefung ohne automatisches `chmod` (z. B. in CI).
 
 ## Hinweise
 

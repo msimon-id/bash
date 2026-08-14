@@ -1,6 +1,7 @@
 # ==============================================================================
 #  System_ID
 # ------------------------------------------------------------------------------
+# shellcheck shell=bash
 #  Datei         : 40-completion.sh
 #  Beschreibung  : Aktiviert programmierbare Bash-Completion, falls verfuegbar
 #                  und nicht bereits ueber /etc/bash.bashrc bzw. /etc/profile

@@ -1,6 +1,7 @@
 # ==============================================================================
 #  System_ID
 # ------------------------------------------------------------------------------
+# shellcheck shell=bash
 #  Datei         : 50-cloud-clis.sh
 #  Beschreibung  : PATH-/Completion-Einbindung fuer die gaengigsten Cloud-CLIs
 #                  (Google Cloud SDK, AWS CLI, Microsoft Azure CLI, Oracle

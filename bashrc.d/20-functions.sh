@@ -1,6 +1,7 @@
 # ==============================================================================
 #  System_ID
 # ------------------------------------------------------------------------------
+# shellcheck shell=bash
 #  Datei         : 20-functions.sh
 #  Beschreibung  : Shell-Funktionen fuer Navigation, Datei-Operationen,
 #                  System-/Prozess-Monitoring, Text-Suche und den
@@ -223,7 +224,7 @@ xtract() {
     esac
 }
 
-mkcd() { mkdir -p "$1" && cd "$1"; }
+mkcd() { mkdir -p "$1" && cd "$1" || return 1; }
 
 # 5. SICHERHEIT
 # ===============================
