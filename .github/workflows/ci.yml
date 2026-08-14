@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Alle Shell-Skripte finden und pruefen
+        run: |
+          set -euo pipefail
+          mapfile -d '' scripts < <(find . -type f -name '*.sh' -not -path './.git/*' -print0)
+          if [ "${#scripts[@]}" -eq 0 ]; then
+            echo "Keine .sh-Dateien gefunden." >&2
+            exit 1
+          fi
+          shellcheck --shell=bash -x -P SCRIPTDIR "${scripts[@]}"
+
+  bats:
+    name: bats-core Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: bats-core installieren
+        run: sudo apt-get update && sudo apt-get install -y bats
+
+      - name: Tests ausfuehren
+        run: |
+          set -euo pipefail
+          if [ -d tests ] && find tests -name '*.bats' -print -quit | grep -q .; then
+            bats tests
+          else
+            echo "Keine bats-Tests unter tests/ gefunden." >&2
+            exit 1
+          fi

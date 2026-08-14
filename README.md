@@ -1,5 +1,7 @@
 # bash-dotfiles
 
+[![CI](https://github.com/msimon-id/bash/actions/workflows/ci.yml/badge.svg)](https://github.com/msimon-id/bash/actions/workflows/ci.yml)
+
 Persönliche Bash-Konfiguration (modulare `bashrc.d/*.sh`, geladen aus der
 originalen `~/.bashrc`) und eigenständige Kommandozeilen-Tools (`tools/`) für
 Admin-/Server-Workflows (AlmaLinux/Debian, Docker/Podman, Kubernetes,
@@ -15,6 +17,8 @@ tools/
 ├── externalip/            # Ermittelt oeffentliche IPv4/IPv6 + PTR-Hostname
 ├── speedtest/             # Bandbreiten-/Latenztest (Cloudflare/Ookla, ohne Fremdcode-Ausfuehrung)
 └── security/              # Pre-Push-Sicherheitspruefungen (Rechte haerten, Secrets scannen)
+tests/                   # bats-core-Tests (siehe Abschnitt "Qualitätssicherung")
+.github/workflows/       # CI-Pipeline (ShellCheck + bats-core)
 ```
 
 ## Installation
@@ -78,6 +82,23 @@ Jedes Teilskript ist auch einzeln aufrufbar, z. B.
 `./tools/security/check_permissions.sh --check-only` fuer eine reine
 Pruefung ohne automatisches `chmod` (z. B. in CI).
 
+## Qualitätssicherung
+
+Jeder Push/Pull-Request durchläuft die CI-Pipeline (`.github/workflows/ci.yml`):
+
+- **ShellCheck** über sämtliche `*.sh`-Dateien des Repositorys (`-x -P SCRIPTDIR`,
+  damit relative `source`-Pfade wie in `tools/*/*.sh` korrekt aufgelöst werden).
+- **bats-core** über `tests/*.bats` - aktuell die Input-Validierungsfunktionen
+  aus `tools/lib/lib_common.sh` (u. a. `is_valid_ipv4`, `is_valid_hostname`,
+  `is_public_hostname` als Regressionstest für den SSRF-Schutz).
+
+Lokal ausführen:
+
+```bash
+shellcheck --shell=bash -x -P SCRIPTDIR $(find . -name '*.sh' -not -path './.git/*')
+bats tests/
+```
+
 ## Hinweise
 
 - `bashrc.d/60-ssh-agent.sh` startet bei Bedarf automatisch einen `ssh-agent`
@@ -85,3 +106,7 @@ Pruefung ohne automatisches `chmod` (z. B. in CI).
   Umgebung anpassen.
 - Sensible Dateien (SSH-Keys, Backups, lokale Session-Daten) sind über
   `.gitignore` ausgeschlossen.
+
+## Lizenz
+
+[MIT](LICENSE)
