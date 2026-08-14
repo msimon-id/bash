@@ -22,3 +22,15 @@ Themenblock - die Luecken sind absichtlich da, um spaeter Dateien
 dazwischen einsortieren zu koennen. Jede Datei muss eigenstaendig per
 `source` ladbar sein (kein Shebang, siehe `../../HEADER_TEMPLATE.sh`,
 Hinweis zu Dateien ohne Shebang).
+
+## SECURITY PIPELINE (Abschnitt in 10-aliases.sh)
+
+Der Block "20. SECURITY PIPELINE" in `10-aliases.sh` bindet Ad-hoc-Aliase
+(`bandit-scan`, `checkov-scan`, `gitleaks-scan`, `trivy-fs`, `sbom-host`,
+`lynis-scan`, ...) fuer die private Ansible-Rolle `security_pipeline` ein,
+die nicht Teil dieses Repositorys ist. Configs, Zielpfad (`$SEC_TARGET`)
+und Report-Verzeichnis (`$SEC_REPORT_DIR`) spiegeln die `tasks/*.yml`
+dieser Rolle. Der Block steht hinter einem Existenz-Guard
+(`[ -d /opt/ansible/roles/security_pipeline ]`) und bleibt auf Maschinen
+ohne diese Rolle folgenlos uebersprungen - ohne die Rolle sind die
+darunter definierten Aliase schlicht nicht vorhanden.
