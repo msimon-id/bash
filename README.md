@@ -118,6 +118,10 @@ bats tests/
   Umgebung anpassen.
 - Sensible Dateien (SSH-Keys, Backups, lokale Session-Daten) sind über
   `.gitignore` ausgeschlossen.
+- `reboot`/`shutdown` sind in `bashrc.d/10-aliases.sh` bewusst ohne
+  Sicherheitsabfrage aliasiert (Komfort-Entscheidung). Eine Variante mit
+  `[y/N]`-Rückfrage liegt direkt daneben auskommentiert bereit - die dortige
+  Kopfzeile beschreibt das Umschalten.
 
 ## Lizenz
 
