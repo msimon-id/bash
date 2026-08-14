@@ -103,12 +103,24 @@ trap _error_trap ERR
 #   Erzeugt eine temporaere Datei mit restriktiven Rechten (umask 077) und
 #   registriert sie automatisch fuer die Bereinigung beim Skriptende.
 #   Parameter:
-#     $1 - optionales mktemp-Template (Standard: tmp.XXXXXX)
+#     $1 - optionales mktemp-Template (Standard: tmp.XXXXXX). Wird gegen
+#          is_safe_path() geprueft, bevor es an mktemp angehaengt wird -
+#          aktuelle Aufrufer verwenden ausschliesslich feste Literale, aber
+#          als gemeinsam genutzte Bibliotheksfunktion darf ein Template mit
+#          eingebettetem ".." oder Newline (Path-Traversal aus /tmp heraus)
+#          nicht unvalidiert an mktemp durchgereicht werden.
 #   Ausgabe: Pfad der erzeugten Datei auf STDOUT
 #   Exceptions: bricht das Skript ab (set -e), falls mktemp fehlschlaegt
+#   Rueckgabewert: 1 bei unsicherem Template (siehe is_safe_path)
 create_secure_tempfile() {
   local template="${1:-tmp.XXXXXX}"
   local created
+
+  if ! is_safe_path "${template}"; then
+    log_error "Unsicheres mktemp-Template abgelehnt: ${template}"
+    return 1
+  fi
+
   created="$(umask 077; mktemp "/tmp/${template}")"
   register_cleanup_target "${created}"
   printf '%s' "${created}"
