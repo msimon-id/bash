@@ -84,17 +84,19 @@ backup_existing() {
 
 # install_file <quelle> <ziel> [modus]
 #   Sichert eine vorhandene Zieldatei und kopiert die Quelle an ihre Stelle.
-#   Setzt anschliessend den angegebenen Modus (Default 0644) auf die
-#   Zieldatei - Tool-Skripte werden mit 0755 installiert, damit sie direkt
-#   ausfuehrbar sind.
+#   Setzt anschliessend den angegebenen Modus (Default 0640) auf die
+#   Zieldatei - Tool-Skripte werden mit 0750 installiert, damit sie direkt
+#   ausfuehrbar sind. Kein Zugriff fuer "andere" in beiden Faellen (CIS-
+#   Level-2-Vorgabe: Owner + Gruppe genuegen, world-readable/-executable
+#   ist fuer persoenliche Dotfiles/Tools unnoetig).
 #   Parameter:
 #     $1 - absoluter Pfad zur Quelldatei im Repo
 #     $2 - absoluter Zielpfad
-#     $3 - optionaler chmod-Modus (Default: 0644)
+#     $3 - optionaler chmod-Modus (Default: 0640)
 #   Rueckgabewert: 0 bei Erfolg; bricht das Skript ueber set -e ab, falls
 #                  Quelle fehlt oder cp/chmod fehlschlaegt
 install_file() {
-  local src="$1" dest="$2" mode="${3:-0644}"
+  local src="$1" dest="$2" mode="${3:-0640}"
 
   if [ ! -f "$src" ]; then
     log "ERROR" "Quelldatei fehlt: ${src}"
@@ -143,7 +145,7 @@ EOF
 
 # bashrc.d/*.sh: alle Module -> $HOME/.bashrc.d/*.sh (gleicher Dateiname)
 mkdir -p -- "$home_bashrc_d"
-chmod 0755 -- "$home_bashrc_d"
+chmod 0750 -- "$home_bashrc_d"
 
 shopt -s nullglob
 modules=("${script_dir}"/bashrc.d/*.sh)
@@ -177,10 +179,11 @@ fi
 for tool_src in "${tool_scripts[@]}"; do
   tool_name="$(basename -- "$(dirname -- "$tool_src")")"
   mkdir -p -- "${home_tools_dir}/${tool_name}"
+  chmod 0750 -- "${home_tools_dir}/${tool_name}"
   if [ "$tool_name" = "lib" ]; then
     install_file "$tool_src" "${home_tools_dir}/${tool_name}/$(basename -- "$tool_src")"
   else
-    install_file "$tool_src" "${home_tools_dir}/${tool_name}/$(basename -- "$tool_src")" 0755
+    install_file "$tool_src" "${home_tools_dir}/${tool_name}/$(basename -- "$tool_src")" 0750
   fi
 done
 
