@@ -1,24 +1,16 @@
-# ---- Secrets / SSH ----------------------------------------------------
-# Niemals private Keys, Passphrasen oder Agent-Sockets versionieren.
-.ssh/
-id_rsa*
-id_ed25519*
-id_github_system_id*
-*.pem
-*.key
-*.p12
-*_history
+# 1. Alles ignorieren
+*
 
-# ---- Backups (siehe bashsave-Alias) ------------------------------------
-.bashrc.backup.*
-*.bak
+# 2. Alle Verzeichnisse wieder erlauben (sonst wird nicht rekursiert)
+!*/
 
-# ---- Editor- / OS-Artefakte ---------------------------------------------
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
+# 3. Gezielt Dateitypen/Dateien whitelisten
+!*.sh
+!*.py
+!README.md
+!.gitignore
 
-# ---- Claude Code lokale Session-/Projektdaten ---------------------------
-.claude/
+# 4. Verzeichnisse, die trotzdem komplett raus sollen (z.B. Build-Output)
+node_modules/
+venv/
+*.log

@@ -1,16 +1,19 @@
 # bash-dotfiles
 
-Persönliche Bash-Konfiguration (`.bashrc`, `.bash_aliases`, `.bash_funktionen`) für Admin-/Server-Workflows (AlmaLinux/Debian, Docker/Podman, Kubernetes, Security-Tooling).
+Persönliche Bash-Konfiguration (modulare `bashrc.d/*.sh`, geladen aus der
+originalen `~/.bashrc`) und eigenständige Kommandozeilen-Tools (`tools/`) für
+Admin-/Server-Workflows (AlmaLinux/Debian, Docker/Podman, Kubernetes,
+Security-Tooling).
 
 ## Struktur
 
 ```
-.bashrc/
-├── .bashrc            # Prompt, PATH, History, sourced Aliase/Funktionen
-├── .bash_aliases      # Alias-Sammlung (System, Systemd, Firewall, Docker, Security-Tools, ...)
-└── .bash_funktionen   # Shell-Funktionen (Navigation, Datei-Ops, Monitoring, security-checkup)
-install.sh             # Verlinkt die drei Dateien nach $HOME
-CODE_REVIEW_REPORT.md  # Ergebnis des letzten Code-Reviews (Korrektheit + Root-Sicherheit)
+bashrc.d/                # Module in numerischer Ladereihenfolge (siehe bashrc.d/README.md)
+install.sh               # Installiert bashrc.d/*.sh nach $HOME, haengt Loader an ~/.bashrc an
+tools/
+├── lib/lib_common.sh     # Gemeinsame Basisfunktionen (Logging, Cleanup-Trap, Retry, Validierung)
+├── externalip/            # Ermittelt oeffentliche IPv4/IPv6 + PTR-Hostname
+└── speedtest/             # Bandbreiten-/Latenztest (Cloudflare/Ookla, ohne Fremdcode-Ausfuehrung)
 ```
 
 ## Installation
@@ -21,10 +24,28 @@ cd bash
 ./install.sh
 ```
 
-Das Skript verlinkt `.bashrc`, `.bash_aliases` und `.bash_funktionen` aus `.bashrc/` nach `$HOME`. Bestehende, nicht-symbolische Dateien im Homeverzeichnis werden vorher automatisch nach `<datei>.backup.<timestamp>` gesichert statt überschrieben.
+Das Skript kopiert alle Module aus `bashrc.d/*.sh` nach `$HOME/.bashrc.d/*.sh`
+(bestehende Zieldateien werden vor dem Überschreiben automatisch nach
+`<datei>.bak`, `.bak1`, `.bak2`, ... gesichert - erste freie Nummer, nichts
+wird überschrieben) und hängt anschließend einen Loader-Block an die
+bestehende, originale `~/.bashrc` an, der die Module aus `~/.bashrc.d/*.sh`
+beim Shellstart lädt. Die originale `~/.bashrc` (z. B. Distributions-Default
+aus `/etc/skel`) bleibt dabei unverändert erhalten - es wird nichts ersetzt,
+nur ergänzt. Der Loader-Block wird per Marker-Kommentar erkannt, ein
+wiederholter Aufruf von `install.sh` hängt ihn also nicht doppelt an. Per
+`source install.sh` statt `./install.sh` wird `~/.bashrc` anschließend direkt
+in der aktuellen Shell neu geladen.
+
+## Tools
+
+Die Skripte unter `tools/` sind eigenständig lauffähig (`./tools/<name>/<name>.sh`)
+und nicht an die `.bashrc`-Installation gekoppelt. Details je Tool im
+Kopfkommentar der jeweiligen Datei.
 
 ## Hinweise
 
-- Viele Aliase in `.bash_aliases` (Systemd, Firewall, Paketverwaltung, Security-Tools) nutzen `sudo` und sind für Admin-Accounts gedacht. Details zur Nutzung unter dem User `root` siehe `CODE_REVIEW_REPORT.md`, Abschnitt „Root-Sicherheit".
-- `.bashrc` lädt am Ende automatisch einen `ssh-agent` und fügt persönliche SSH-Keys hinzu (`start_ssh_agent`). Pfade ggf. an die eigene Umgebung anpassen.
-- Sensible Dateien (SSH-Keys, Backups, lokale Claude-Code-Session-Daten) sind über `.gitignore` ausgeschlossen.
+- `bashrc.d/60-ssh-agent.sh` startet bei Bedarf automatisch einen `ssh-agent`
+  und lädt persönliche SSH-Keys (`start_ssh_agent`). Pfade ggf. an die eigene
+  Umgebung anpassen.
+- Sensible Dateien (SSH-Keys, Backups, lokale Session-Daten) sind über
+  `.gitignore` ausgeschlossen.

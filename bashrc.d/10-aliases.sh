@@ -1,7 +1,14 @@
-# ==========================================================
-#   AlmaLinux BashRC – Administrator Edition
-#   Optimiert für Server, Container und Security Workflows
-# ==========================================================
+# ==============================================================================
+#  System_ID
+# ------------------------------------------------------------------------------
+#  Datei         : 10-aliases.sh
+#  Beschreibung  : Alias-Sammlung fuer AlmaLinux-/Debian-Admin-Workflows
+#                  (System, Systemd, Firewall, Docker/Podman/Kubernetes,
+#                  Backup, Security-Tools, ...).
+#  Repository    : bash
+#  Autor         : Michael Simon
+#  Unternehmen   : System_ID
+# ==============================================================================
 
 # ----[ 5. ALIASE – SYSTEM ]--------------------------------
 alias dfh='df -hT --total'
@@ -560,5 +567,5 @@ alias cronrestart='sudo systemctl restart cron 2>/dev/null || sudo systemctl res
 # Live-Log fuer Cron-Jobs: siehe 'logcron' (Abschnitt 15)
 
 # ==========================================================
-#   ENDE DER BASHRC
+#   ENDE DER ALIASE
 # ==========================================================

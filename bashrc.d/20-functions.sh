@@ -1,8 +1,25 @@
+# ==============================================================================
+#  System_ID
+# ------------------------------------------------------------------------------
+#  Datei         : 20-functions.sh
+#  Beschreibung  : Shell-Funktionen fuer Navigation, Datei-Operationen,
+#                  System-/Prozess-Monitoring, Text-Suche und den
+#                  security-checkup-Sammelstatus.
+#  Repository    : bash
+#  Autor         : Michael Simon
+#  Unternehmen   : System_ID
+# ==============================================================================
+
 # 1. NAVIGATION & VERZEICHNISSE
 # ===============================
 
 # cd + ls kombiniert
 cdls() { cd "$1" && ls -lh; }
+
+mkls() {
+    [ -z "$1" ] && { echo "Fehler: Name fehlt" >&2; return 1; }
+    mkdir -p "$1" && cd "$1" && ls -lh
+}
 
 # Schnelle Verzeichnis-Navigation (up N levels)
 up() {
@@ -56,7 +73,7 @@ bigdirs() { du -sh */ 2>/dev/null | sort -hr | head -10; }
 # Prozesse nach CPU/Memory sortieren
 topproc() { ps aux --sort=-%cpu | head -11; }
 # topmem() entfernt: kollidierte mit dem gleichnamigen, feineren Alias
-# 'topmem' aus .bash_aliases (Abschnitt 14) - Aliase gewinnen immer
+# 'topmem' aus 10-aliases.sh (Abschnitt 14) - Aliase gewinnen immer
 # gegen Funktionen, die Funktion war dadurch nie erreichbar.
 
 
@@ -135,8 +152,9 @@ findtext() { find . -type f -name "*.${2:-txt}" -exec grep -l "$1" {} \; 2>/dev/
 #
 # Nutzung: xtract archiv.tar.gz
 #
-# In ~/.bashrc oder ~/.bash_aliases einfügen und danach
-# 'source ~/.bashrc' ausführen (oder Terminal neu starten).
+# Eigene Ergänzungen gehören in eine neue Datei unter ~/.bashrc.d/
+# (siehe bashrc.d/README.md fuer die Namens-/Reihenfolgekonvention) und
+# wirken nach 'source ~/.bashrc' (oder einem neuen Terminal).
 
 xtract() {
     if [[ $# -eq 0 ]]; then
@@ -210,7 +228,7 @@ mkcd() { mkdir -p "$1" && cd "$1"; }
 # 5. SICHERHEIT
 # ===============================
 
-# security-checkup — Sammelstatus aller Security-Tools aus .bash_aliases
+# security-checkup — Sammelstatus aller Security-Tools aus 10-aliases.sh
 # (Abschnitt 21: auditd, ClamAV, Freshclam, Suricata, Wazuh, SELinux,
 # rsyslog, psacct, fail2ban, chrony, chkrootkit, AIDE, logrotate).
 #
