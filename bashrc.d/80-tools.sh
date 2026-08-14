@@ -32,6 +32,11 @@ fi
 #   Ruft das installierte speedtest.sh-Tool auf (Bandbreiten-/Latenztest
 #   gegen Cloudflare/speedtest.net).
 if [ -x "${TOOLS_DIR}/speedtest/speedtest.sh" ]; then
+    # unalias zuerst: siehe gleiche Begruendung bei myip() in
+    # bashrc.d/10-aliases.sh - ein vorbestehender Alias gleichen Namens
+    # (Distro-Default, Framework) wuerde die Funktionsdefinition sonst
+    # mit einem Syntaxfehler abbrechen lassen.
+    unalias speedtest 2>/dev/null
     speedtest() {
         "${TOOLS_DIR}/speedtest/speedtest.sh" "$@"
     }

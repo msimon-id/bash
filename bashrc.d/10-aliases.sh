@@ -70,6 +70,10 @@ alias ports='ss -tulpen'
 # scheinbares '$1' im Wert ab, weil es dort mit einem Positionsparameter des
 # Alias-Aufrufs verwechselt werden koennte - hier ist es aber awks eigenes
 # Feld-'$1', das erst beim Ausfuehren der Funktion gebraucht wird.
+# unalias zuerst: existiert auf manchen Systemen bereits ein Alias
+# gleichen Namens (Distro-Default, Framework), expandiert Bash ihn beim
+# Parsen der Funktionsdefinition - Syntaxfehler beim Laden waere die Folge.
+unalias myip 2>/dev/null
 myip() { hostname -I | awk '{print $1}'; }
 alias pingg='ping -c 5 8.8.8.8'
 alias trace='traceroute 8.8.8.8'
