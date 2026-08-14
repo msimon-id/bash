@@ -34,8 +34,12 @@ der die Module aus `~/.bashrc.d/*.sh` beim Shellstart lädt. Die originale
 `~/.bashrc` (z. B. Distributions-Default aus `/etc/skel`) bleibt dabei
 unverändert erhalten - es wird nichts ersetzt, nur ergänzt. Der Loader-Block
 wird per Marker-Kommentar erkannt, ein wiederholter Aufruf von `install.sh`
-hängt ihn also nicht doppelt an. Per `source install.sh` statt `./install.sh`
-wird `~/.bashrc` anschließend direkt in der aktuellen Shell neu geladen.
+hängt ihn also nicht doppelt an. Das Skript führt zum Abschluss selbst
+`source ~/.bashrc` aus - bei `./install.sh` wirkt sich das aber nur innerhalb
+des eigenen Skript-Prozesses aus, nicht im aufrufenden Terminal (Subshell).
+Für eine sofortige Übernahme in der aktuellen Shell entweder `source
+install.sh` statt `./install.sh` verwenden, oder danach manuell `source
+~/.bashrc` ausführen.
 
 ## Tools
 

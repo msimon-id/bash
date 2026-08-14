@@ -14,16 +14,17 @@
 #                  Ersetzen der Datei), der die Module aus ~/.bashrc.d/*.sh
 #                  beim Shellstart per 'source' laedt - eines dieser Module
 #                  (80-tools.sh) bindet die installierten Tools als
-#                  Shell-Funktionen ein. Laedt .bashrc anschliessend neu,
-#                  falls moeglich.
+#                  Shell-Funktionen ein. Fuehrt zum Abschluss 'source
+#                  ~/.bashrc' selbst aus.
 #  Repository    : bash
 #  Autor         : Michael Simon
 #  Unternehmen   : System_ID
 # ==============================================================================
 #
 # Usage:
-#   ./install.sh
-#   source install.sh   # laedt .bashrc danach direkt in der aktuellen Shell neu
+#   ./install.sh        # installiert; fuer die aktuelle Shell danach manuell
+#                        # 'source ~/.bashrc' ausfuehren (Subshell-Grund siehe unten)
+#   source install.sh   # installiert und laedt .bashrc direkt in dieser Shell neu
 #
 # Exit-Codes:
 #   0  Installation erfolgreich
@@ -189,14 +190,21 @@ done
 
 append_bashrc_loader
 
-# .bashrc neu laden: funktioniert nur, wenn dieses Skript per 'source'
-# statt './install.sh' aufgerufen wurde - nur dann laeuft es in der
-# aktuellen interaktiven Shell und nicht in einer Subshell, die beim
-# Skriptende ohnehin verworfen wird.
-if (return 0 2>/dev/null); then
-  # shellcheck source=/dev/null
-  source "${HOME}/.bashrc"
-  log "INFO" "Aktuelle Shell aktualisiert (.bashrc neu geladen)."
-else
-  log "INFO" "Fertig. Fuer eine sofortige Uebernahme in diesem Terminal: source ~/.bashrc"
-fi
+# .bashrc neu laden: wirkt nur dann in der aufrufenden interaktiven Shell,
+# wenn dieses Skript per 'source install.sh' (statt './install.sh')
+# aufgerufen wurde - bei './install.sh' laeuft dieses 'source' in einem
+# eigenen Subshell-Prozess und geht beim Skriptende verloren, dann bleibt
+# ein manuelles 'source ~/.bashrc' im aufrufenden Terminal noetig.
+#
+# set +euo pipefail und ERR-Trap aus vorher: bashrc.d/-Module sind fuer
+# normale interaktive Shells geschrieben (kein 'set -u'/'set -e', kein
+# eigener ERR-Trap) und duerfen z.B. auf noch nicht gesetzte
+# Umgebungsvariablen (SSH_AUTH_SOCK etc.) oder erwartete interne
+# Fehlschlaege (z.B. ssh-add ohne vorhandene Keys) treffen, ohne dass
+# das install.sh selbst (oder bei 'source install.sh' die aufrufende Shell)
+# deswegen abbricht oder das faelschlich als ERROR protokolliert.
+set +euo pipefail
+trap - ERR
+# shellcheck source=/dev/null
+source "${HOME}/.bashrc"
+log "INFO" "Fertig (.bashrc neu geladen)."
