@@ -32,7 +32,7 @@ up() {
     cd "$path" || return 1
 }
 
-# Zu häufig verwendeten Verzeichnissen springen
+# Zu haeufig verwendeten Verzeichnissen springen
 cdtemp() { cd /tmp && pwd; }
 cdhome() { cd ~ && pwd; }
 cdwork() { cd ~/work && pwd; }
@@ -44,13 +44,13 @@ bd() { cd - && pwd; }
 # 2. DATEI-OPERATIONEN
 # ===============================
 
-# Sichere Kopie (mit Bestätigung bei Überschreiben)
+# Sichere Kopie (mit Bestaetigung bei Ueberschreiben)
 cp() { command cp -i "$@"; }
 
 # Sichere Verschiebung
 mv() { command mv -i "$@"; }
 
-# Sichere Löschung (mit Bestätigung)
+# Sichere Loeschung (mit Bestaetigung)
 rm() { command rm -i "$@"; }
 
 # Datei duplizieren
@@ -76,10 +76,10 @@ dup() {
     echo "✓ Backup: ${target}"
 }
 
-# Größte Dateien im aktuellen Verzeichnis
+# Groesste Dateien im aktuellen Verzeichnis
 bigfiles() { find . -type f -printf '%s %p\n' | sort -rn | head -20 | awk '{size=$1; $1=""; sub(/^ /,""); printf "%.1f MB: %s\n", size/1048576, $0}'; }
 
-# Größte Verzeichnisse
+# Groesste Verzeichnisse
 bigdirs() { du -sh -- */ 2>/dev/null | sort -hr | head -10; }
 
 # 3. SYSTEM & PROZESSE
@@ -96,7 +96,7 @@ pgrep-name() { pgrep -a "$1" | head -5; }
 
 # Offene Ports anzeigen
 #ports() { ss -tlnp 2>/dev/null | grep LISTEN; }
-# Netzwerk-Aktivität (Linux)
+# Netzwerk-Aktivitaet (Linux)
 netstat-active() { ss -tan | grep -c ESTABLISHED; }
 
 # CPU-Auslastung
@@ -139,9 +139,9 @@ myipis() {
     ip4=$(curl -s -4 --max-time 3 https://api.ipify.org)
     ip6=$(curl -s -6 --max-time 3 https://api6.ipify.org)
     rhost=$(curl -s --max-time 3 https://ipinfo.io/hostname)
-    echo "IPv4:     ${ip4:-nicht verfügbar}"
-    echo "IPv6:     ${ip6:-nicht verfügbar}"
-    echo "Hostname: ${rhost:-nicht verfügbar}"
+    echo "IPv4:     ${ip4:-nicht verfuegbar}"
+    echo "IPv6:     ${ip6:-nicht verfuegbar}"
+    echo "Hostname: ${rhost:-nicht verfuegbar}"
 }
 
 # 4. TEXT & SUCHE
@@ -180,13 +180,13 @@ replace() {
 # Datei nach Muster durchsuchen
 findtext() { find . -type f -name "*.${2:-txt}" -exec grep -l "$1" {} \; 2>/dev/null; }
 
-# xtract() — entpackt ein Archiv (beliebiges gängiges Format) automatisch
+# xtract() — entpackt ein Archiv (beliebiges gaengiges Format) automatisch
 # in ein gleichnamiges Unterverzeichnis (ohne Archiv-Endung) im selben
 # Ordner wie die Archivdatei.
 #
 # Nutzung: xtract archiv.tar.gz
 #
-# Eigene Ergänzungen gehören in eine neue Datei unter ~/.bashrc.d/
+# Eigene Ergaenzungen gehoeren in eine neue Datei unter ~/.bashrc.d/
 # (siehe bashrc.d/README.md fuer die Namens-/Reihenfolgekonvention) und
 # wirken nach 'source ~/.bashrc' (oder einem neuen Terminal).
 
@@ -207,8 +207,8 @@ xtract() {
     dir=$(dirname -- "${archive}")
     base=$(basename -- "${archive}")
 
-    # Reihenfolge wichtig: mehrteilige Endungen ZUERST prüfen,
-    # sonst würde z.B. "archiv.tar.gz" fälschlich nur ".gz" verlieren.
+    # Reihenfolge wichtig: mehrteilige Endungen ZUERST pruefen,
+    # sonst wuerde z.B. "archiv.tar.gz" faelschlich nur ".gz" verlieren.
     case "${base}" in
         *.tar.bz2) base="${base%.tar.bz2}" ;;
         *.tar.gz)  base="${base%.tar.gz}"  ;;
@@ -266,12 +266,12 @@ mkcd() { mkdir -p "$1" && cd "$1" || return 1; }
 # (Abschnitt 21: auditd, ClamAV, Freshclam, Suricata, Wazuh, SELinux,
 # rsyslog, psacct, fail2ban, chrony, chkrootkit, AIDE, logrotate).
 #
-# Prüft je Tool: läuft der Dienst, wird das Log noch beschrieben,
-# stehen Fehler/Auffälligkeiten drin - und fasst erkennbare
-# Sicherheitsvorfälle (Bans, fehlgeschlagene Logins, AVC-Denials,
+# Prueft je Tool: laeuft der Dienst, wird das Log noch beschrieben,
+# stehen Fehler/Auffaelligkeiten drin - und fasst erkennbare
+# Sicherheitsvorfaelle (Bans, fehlgeschlagene Logins, AVC-Denials,
 # Rootkit-/AIDE-Funde) am Ende zusammen.
 #
-# Benötigt für die meisten Log-/Audit-Checks root-Rechte -> fragt
+# Benoetigt fuer die meisten Log-/Audit-Checks root-Rechte -> fragt
 # einmalig per sudo -v, danach keine weiteren Passwort-Prompts.
 security-checkup() {
     local c_ok=$'\033[38;5;46m'
@@ -289,7 +289,7 @@ security-checkup() {
         printf -- '------------------------------------------------------------\n'
     }
 
-    # Anzeigename + mögliche systemd-Unit-Namen (erste installierte/aktive gewinnt)
+    # Anzeigename + moegliche systemd-Unit-Namen (erste installierte/aktive gewinnt)
     _sc_service() {
         local name="$1"; shift
         local unit installed="" active=""

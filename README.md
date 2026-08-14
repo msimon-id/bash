@@ -106,6 +106,12 @@ bats tests/
   Umgebung anpassen.
 - Sensible Dateien (SSH-Keys, Backups, lokale Session-Daten) sind über
   `.gitignore` ausgeschlossen.
+- **Umlaute:** Prosa in Markdown-Dateien (README.md, bashrc.d/README.md)
+  verwendet reguläre Umlaute (ä/ö/ü/ß). Inline-Kommentare in `.sh`-Dateien
+  transliterieren dagegen durchgängig (ae/oe/ue/ss) - das ist bewusst so,
+  nicht inkonsistent: Skript-Kommentare landen potenziell in Terminals,
+  Logs oder Umgebungen mit unsicherem Encoding, Markdown-Prosa wird auf
+  GitHub gerendert und darf sich auf UTF-8 verlassen.
 
 ## Lizenz
 

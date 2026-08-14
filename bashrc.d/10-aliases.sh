@@ -401,7 +401,7 @@ alias grep='grep --color=auto'
 alias egrep='egrep --color=auto'
 alias fgrep='fgrep --color=auto'
 alias diff='diff --color=auto'
-# -color wird erst ab iproute2 5.14 unterstützt (fehlt z.B. auf Debian 11 / AlmaLinux 8)
+# -color wird erst ab iproute2 5.14 unterstuetzt (fehlt z.B. auf Debian 11 / AlmaLinux 8)
 if ip -c a >/dev/null 2>&1; then
     alias ip='ip -color=auto'
 fi
@@ -417,7 +417,7 @@ fi
 # Ad-hoc-Aufrufe der dort installierten Tools, mit denselben Configs und
 # demselben Report-Verzeichnis wie in den tasks/*.yml der Rolle - become
 # nur dort, wo die Rolle selbst become:true nutzt (lynis, trivy-image,
-# sbom), der Rest läuft bewusst ohne sudo (Least Privilege).
+# sbom), der Rest laeuft bewusst ohne sudo (Least Privilege).
 export SEC_REPORT_DIR=/opt/ansible/docs/security-reports
 export SEC_TARGET=/opt/ansible
 
@@ -445,7 +445,7 @@ alias trivy-fs='/usr/local/bin/trivy fs --scanners vuln --severity CRITICAL,HIGH
 alias trivy-image='sudo /usr/local/bin/trivy image --severity CRITICAL,HIGH --timeout 5m --format json'
 alias trivy-images-list='$SEC_ENGINE images --format "{{.Repository}}:{{.Tag}}"'
 
-# SBOM / Systemhärtung (mit become, wie in der Rolle)
+# SBOM / Systemhaertung (mit become, wie in der Rolle)
 alias sbom-host='sudo /usr/local/bin/syft scan dir:/ --exclude ./proc/** --exclude ./sys/** --exclude ./dev/** --exclude ./run/** --exclude ./tmp/** --exclude ./var/tmp/** --exclude ./var/lib/docker/** --exclude ./var/lib/containers/** -o cyclonedx-json="$SEC_REPORT_DIR/sbom/host-sbom.json"'
 alias sbom-image='sudo /usr/local/bin/syft scan $SEC_ENGINE:'
 alias lynis-scan='sudo lynis audit system --quiet'

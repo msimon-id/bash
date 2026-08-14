@@ -52,7 +52,7 @@ if [ -t 1 ]; then
     DIM="\[\033[2m\]"
     RESET="\[\033[0m\]"
 
-    # Optional: Truecolor (24-bit) für moderne Terminals
+    # Optional: Truecolor (24-bit) fuer moderne Terminals
     # RED="\[\033[38;2;255;0;0m\]"
 else
     RED=""
