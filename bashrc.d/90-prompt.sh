@@ -76,9 +76,14 @@ else
     RESET=""
 fi
 
-# Farbiger dynamischer Prompt mit Exitcodeanzeige
+# Farbiger dynamischer Prompt mit Exitcodeanzeige. Nutzer in TEAL (dunkleres
+# Cyan, gleiche Farbfamilie wie der Hostname), "@" gedimmt statt farbig
+# (reine Trenn-/Strukturmarkierung, kein eigenes Element), Hostname in CYAN,
+# Pfad in GRAY - ein zusammenhaengender Block statt eines Farbmix wie zuvor
+# (CYAN + GREEN). Die Exitcode-Klammer bleibt bewusst GELB/ROT: das ist ein
+# Warnsignal, kein Deko-Element, und soll sich gerade farblich abheben.
 PROMPT_COMMAND='RET=$?; [ "$RET" = "0" ] && RET="";'
-PROMPT_COMMAND+='PS1="\n${CYAN}\h${RESET}:${GREEN}\w${RESET} '
+PROMPT_COMMAND+='PS1="\n${TEAL}\u${RESET}${DIM}@${RESET}${CYAN}\h${RESET}${GRAY}:\w${RESET} '
 PROMPT_COMMAND+='${RET:+${YELLOW}[${RED}${RET}${YELLOW}]${RESET} }${RESET}\n\\$ "'
 
 # enable color support of ls and also add handy aliases
