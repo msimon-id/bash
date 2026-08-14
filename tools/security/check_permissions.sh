@@ -56,6 +56,10 @@
 #   der Orchestrator tools/security/pre-push.sh (ruft dieses Skript und
 #   zusaetzlich scan_secrets.sh auf) - siehe dort.
 #
+#   Kernfunktionen (is_secret_path, current_mode, apply_mode,
+#   check_symlink_target) sind per 'source' isoliert einbindbar, ohne dass
+#   main() automatisch laeuft - siehe bats-Tests unter tests/.
+#
 # Exit-Codes:
 #   0  Alles konform, oder Abweichungen erfolgreich behoben
 #   1  Unsicherer Symlink (zeigt aus dem Repository heraus) gefunden
@@ -86,30 +90,10 @@ readonly SECRET_MODE="0600"
 # "nur Owner" (kein Gruppen-/Other-Zugriff), erhaelt aber x fuer den Owner.
 readonly SECRET_SCRIPT_MODE="0700"
 
-# Als pre-push-Hook ruft git dieses Skript mit <remote-name> <remote-url> als
-# Positionsargumenten auf (plus Ref-Updates auf STDIN, die hier nicht
-# benoetigt werden). Solche bloszen Positionsargumente werden daher ignoriert
-# statt als Fehler behandelt - nur unbekannte "--"-Optionen gelten als
-# Fehlbedienung bei manuellem Aufruf.
+# Globaler Zustand fuer die Zaehler aus apply_mode() - main() setzt sie vor
+# der Enumeration auf 0 zurueck, damit mehrfache main()-Aufrufe im selben
+# Prozess (z.B. in bats-Tests) nicht auf einem Altstand weiterzaehlen.
 CHECK_ONLY=0
-for arg in "$@"; do
-    case "$arg" in
-        --check-only) CHECK_ONLY=1 ;;
-        --*)
-            log_error "Unbekannte Option: ${arg} (erlaubt: --check-only)"
-            exit 2
-            ;;
-        *) : ;;
-    esac
-done
-
-command -v git >/dev/null 2>&1 || { log_error "git wird benoetigt."; exit 2; }
-command -v stat >/dev/null 2>&1 || { log_error "stat wird benoetigt."; exit 2; }
-
-repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" \
-    || { log_error "Kein git-Arbeitsbaum in $(pwd)."; exit 2; }
-readonly repo_root
-
 fixed_count=0
 warn_count=0
 unsafe_found=0
@@ -188,73 +172,118 @@ apply_mode() {
     exit 3
 }
 
-# check_symlink_target <repo-relativer-pfad>
+# check_symlink_target <repo-root> <repo-relativer-pfad>
 #   Verifiziert, dass ein von git verwalteter Symlink innerhalb des
 #   Repositorys bleibt. Ein Symlink, der aus dem Repository heraus zeigt,
 #   koennte beim Auschecken/Oeffnen auf einem anderen System unbeabsichtigt
 #   Dateien ausserhalb des erwarteten Baums referenzieren - dafuer gibt es
 #   keinen automatischen Fix, nur Abbruch.
 #   Parameter:
-#     $1 - repo-relativer Pfad des Symlinks
+#     $1 - repo_root (absoluter Pfad)
+#     $2 - repo-relativer Pfad des Symlinks
 #   Rueckgabewert: 0 wenn Ziel innerhalb von repo_root, 1 sonst
 check_symlink_target() {
-    local rel="$1" abs resolved
+    local repo_root="$1" rel="$2" abs resolved
     abs="${repo_root}/${rel}"
     resolved="$(readlink -f -- "$abs" 2>/dev/null || true)"
     [[ -n "$resolved" && "$resolved" == "${repo_root}/"* ]]
 }
 
-log_info "Pruefe Datei-/Verzeichnisrechte in ${repo_root}$( [[ "$CHECK_ONLY" -eq 1 ]] && echo ' (nur Pruefung, kein Fix)')"
+# main [--check-only]
+#   Fuehrt die eigentliche Pruefung/Haertung ueber den gesamten Arbeitsbaum
+#   aus. In eine Funktion ausgelagert (statt Top-Level-Code), damit dieses
+#   Skript per 'source' auch nur zum Bereitstellen der obigen Kernfunktionen
+#   eingebunden werden kann, ohne den vollen Lauf auszuloesen - siehe
+#   bats-Tests unter tests/.
+#   Rueckgabewert: siehe Exit-Codes im Usage-Block oben.
+main() {
+    CHECK_ONLY=0
+    fixed_count=0
+    warn_count=0
+    unsafe_found=0
 
-# --- Verzeichnisse ---------------------------------------------------------
-# Alle Verzeichnisse im Arbeitsbaum ausser .git (von git selbst verwaltet,
-# nicht Teil dessen, was gepusht wird).
-while IFS= read -r -d '' dir; do
-    apply_mode "$dir" "$DIR_MODE" "Verzeichnis"
-done < <(find "$repo_root" -type d -not -path "${repo_root}/.git" -not -path "${repo_root}/.git/*" -print0)
+    # Als pre-push-Hook ruft git dieses Skript mit <remote-name> <remote-url>
+    # als Positionsargumenten auf (plus Ref-Updates auf STDIN, die hier nicht
+    # benoetigt werden). Solche bloszen Positionsargumente werden daher
+    # ignoriert statt als Fehler behandelt - nur unbekannte "--"-Optionen
+    # gelten als Fehlbedienung bei manuellem Aufruf.
+    local arg
+    for arg in "$@"; do
+        case "$arg" in
+            --check-only) CHECK_ONLY=1 ;;
+            --*)
+                log_error "Unbekannte Option: ${arg} (erlaubt: --check-only)"
+                exit 2
+                ;;
+            *) : ;;
+        esac
+    done
 
-# --- Von git verfolgte Dateien ---------------------------------------------
-# Nur Dateien, die tatsaechlich Teil des Repository-Inhalts sind (git
-# ls-files) - lokale, bewusst ignorierte Dateien (z.B. .claude/settings.local.json)
-# bleiben unangetastet. -s liefert den git-Modus (100644/100755/120000) je
-# Eintrag, -z trennt NUL-separiert fuer sichere Verarbeitung beliebiger
-# Dateinamen.
-while IFS= read -r -d '' entry; do
-    meta="${entry%%$'\t'*}"
-    rel_path="${entry#*$'\t'}"
-    git_mode="${meta%% *}"
-    abs_path="${repo_root}/${rel_path}"
+    command -v git >/dev/null 2>&1 || { log_error "git wird benoetigt."; exit 2; }
+    command -v stat >/dev/null 2>&1 || { log_error "stat wird benoetigt."; exit 2; }
 
-    if [[ "$git_mode" == "120000" ]]; then
-        if ! check_symlink_target "$rel_path"; then
-            log_error "Unsicherer Symlink zeigt aus dem Repository heraus: ${rel_path}"
-            unsafe_found=1
+    local repo_root
+    repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" \
+        || { log_error "Kein git-Arbeitsbaum in $(pwd)."; exit 2; }
+
+    log_info "Pruefe Datei-/Verzeichnisrechte in ${repo_root}$( [[ "$CHECK_ONLY" -eq 1 ]] && echo ' (nur Pruefung, kein Fix)')"
+
+    # --- Verzeichnisse -------------------------------------------------
+    # Alle Verzeichnisse im Arbeitsbaum ausser .git (von git selbst
+    # verwaltet, nicht Teil dessen, was gepusht wird).
+    local dir
+    while IFS= read -r -d '' dir; do
+        apply_mode "$dir" "$DIR_MODE" "Verzeichnis"
+    done < <(find "$repo_root" -type d -not -path "${repo_root}/.git" -not -path "${repo_root}/.git/*" -print0)
+
+    # --- Von git verfolgte Dateien --------------------------------------
+    # Nur Dateien, die tatsaechlich Teil des Repository-Inhalts sind (git
+    # ls-files) - lokale, bewusst ignorierte Dateien (z.B.
+    # .claude/settings.local.json) bleiben unangetastet. -s liefert den
+    # git-Modus (100644/100755/120000) je Eintrag, -z trennt NUL-separiert
+    # fuer sichere Verarbeitung beliebiger Dateinamen.
+    local entry meta rel_path git_mode abs_path
+    while IFS= read -r -d '' entry; do
+        meta="${entry%%$'\t'*}"
+        rel_path="${entry#*$'\t'}"
+        git_mode="${meta%% *}"
+        abs_path="${repo_root}/${rel_path}"
+
+        if [[ "$git_mode" == "120000" ]]; then
+            if ! check_symlink_target "$repo_root" "$rel_path"; then
+                log_error "Unsicherer Symlink zeigt aus dem Repository heraus: ${rel_path}"
+                unsafe_found=1
+            fi
+            continue
         fi
-        continue
-    fi
 
-    if is_secret_path "$rel_path"; then
-        if [[ "$git_mode" == "100755" ]]; then
-            apply_mode "$abs_path" "$SECRET_SCRIPT_MODE" "Datei (geheimnisverdaechtig, ausfuehrbar)"
+        if is_secret_path "$rel_path"; then
+            if [[ "$git_mode" == "100755" ]]; then
+                apply_mode "$abs_path" "$SECRET_SCRIPT_MODE" "Datei (geheimnisverdaechtig, ausfuehrbar)"
+            else
+                apply_mode "$abs_path" "$SECRET_MODE" "Datei (geheimnisverdaechtig)"
+            fi
+        elif [[ "$git_mode" == "100755" ]]; then
+            apply_mode "$abs_path" "$SCRIPT_MODE" "Datei (ausfuehrbar)"
         else
-            apply_mode "$abs_path" "$SECRET_MODE" "Datei (geheimnisverdaechtig)"
+            apply_mode "$abs_path" "$FILE_MODE" "Datei"
         fi
-    elif [[ "$git_mode" == "100755" ]]; then
-        apply_mode "$abs_path" "$SCRIPT_MODE" "Datei (ausfuehrbar)"
-    else
-        apply_mode "$abs_path" "$FILE_MODE" "Datei"
+    done < <(git -C "$repo_root" ls-files -s -z)
+
+    if [[ "$unsafe_found" -eq 1 ]]; then
+        log_error "Abbruch: mindestens ein unsicherer Symlink gefunden, siehe Meldungen oben."
+        exit 1
     fi
-done < <(git -C "$repo_root" ls-files -s -z)
 
-if [[ "$unsafe_found" -eq 1 ]]; then
-    log_error "Abbruch: mindestens ein unsicherer Symlink gefunden, siehe Meldungen oben."
-    exit 1
+    if [[ "$CHECK_ONLY" -eq 1 ]]; then
+        log_info "Pruefung abgeschlossen: ${warn_count} Abweichung(en) gefunden."
+    else
+        log_info "Pruefung abgeschlossen: ${fixed_count} korrigiert, ${warn_count} nicht behebbar (fremder Besitzer)."
+    fi
+
+    return 0
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
 fi
-
-if [[ "$CHECK_ONLY" -eq 1 ]]; then
-    log_info "Pruefung abgeschlossen: ${warn_count} Abweichung(en) gefunden."
-else
-    log_info "Pruefung abgeschlossen: ${fixed_count} korrigiert, ${warn_count} nicht behebbar (fremder Besitzer)."
-fi
-
-exit 0
