@@ -83,7 +83,15 @@ PROMPT_COMMAND+='${RET:+${YELLOW}[${RED}${RET}${YELLOW}]${RESET} }${RESET}\n\\$ 
 
 # enable color support of ls and also add handy aliases
 if [ -x /usr/bin/dircolors ]; then
-    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    # if/else statt 'test -r ... && eval ... || eval ...': im A&&B||C-Muster
+    # wuerde der C-Zweig (Standard-dircolors) faelschlich zusaetzlich
+    # laufen, falls B (eval der eigenen ~/.dircolors) selbst einen
+    # Nicht-Null-Status liefert - trotz vorhandener/lesbarer Datei.
+    if [ -r ~/.dircolors ]; then
+        eval "$(dircolors -b ~/.dircolors)"
+    else
+        eval "$(dircolors -b)"
+    fi
     alias ls='ls --color=auto'
     alias grep='grep --color=auto'
     alias fgrep='fgrep --color=auto'

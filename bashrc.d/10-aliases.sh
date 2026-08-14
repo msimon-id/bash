@@ -380,7 +380,12 @@ alias nettest='curl -Is https://example.com | head -n1'
 # Funktionsdefinition gleichen Namens -> Syntaxfehler beim Laden). Das
 # eigentliche Tool liegt unter tools/speedtest/speedtest.sh und ersetzt
 # bewusst den frueheren ungeprueften curl-\|-python-Download.
-alias passwort='openssl rand -base64 24 | tr -d '=+/' | head -c 32'
+# Doppelte Anfuehrungszeichen fuer den gesamten Alias-Wert (statt
+# verschachtelter einfacher Quotes wie 'openssl ... | tr -d '=+/' | ...'):
+# letzteres funktioniert nur zufaellig richtig, weil Bash die drei
+# Quote-Fragmente wieder zu einem String zusammensetzt - liest sich aber
+# wie ein Quoting-Fehler und bricht bei jeder Bearbeitung leicht.
+alias passwort="openssl rand -base64 24 | tr -d '=+/' | head -c 32"
 
 # SSH-Key-Management
 alias sshkeygen='ssh-keygen -t ed25519 -a 100'
