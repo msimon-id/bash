@@ -41,3 +41,122 @@ jobs:
             echo "Keine bats-Tests unter tests/ gefunden." >&2
             exit 1
           fi
+
+  security-tooling:
+    name: Security-Tooling (check_permissions.sh + scan_secrets.sh)
+    runs-on: ubuntu-latest
+    steps:
+      # scan_secrets.sh durchsucht die volle Commit-Historie - ohne
+      # fetch-depth: 0 liefert actions/checkout nur einen flachen Klon (Tiefe
+      # 1) und der Scan wuerde stillschweigend nur den letzten Commit pruefen.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: gitleaks installieren (Version gepinnt, Checksum-verifiziert)
+        env:
+          GITLEAKS_VERSION: "8.30.1"
+        run: |
+          set -euo pipefail
+          workdir="$(mktemp -d)"
+          trap 'rm -rf -- "$workdir"' EXIT
+
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          base_url="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+
+          curl -fsSL -o "${workdir}/${archive}" "${base_url}/${archive}"
+          curl -fsSL -o "${workdir}/checksums.txt" \
+            "${base_url}/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+
+          # Nur die Zeile des tatsaechlich geladenen Archivs verifizieren,
+          # nicht die komplette Checksummen-Datei (enthaelt Eintraege fuer
+          # alle Plattformen).
+          ( cd "$workdir" && grep -F " ${archive}" checksums.txt | sha256sum -c - )
+
+          tar -xzf "${workdir}/${archive}" -C "$workdir" gitleaks
+          sudo install -m 0755 -- "${workdir}/gitleaks" /usr/local/bin/gitleaks
+          gitleaks version
+
+      - name: check_permissions.sh --check-only ausfuehren
+        run: |
+          set -euo pipefail
+          # --check-only: reine Pruefung ohne chmod. Auf einem frischen
+          # Runner-Checkout weichen Verzeichnis-/Dateirechte praktisch immer
+          # vom lokalen Zielschema (2770/0770/0660, siehe Kopfkommentar des
+          # Skripts) ab - das ist erwartet und wird nur als WARN protokolliert,
+          # kein Job-Fehlschlag. Tatsaechlich sicherheitsrelevant und
+          # abbruchfaehig (Exit-Code 1) ist ausschliesslich ein Symlink, der
+          # aus dem Repository heraus zeigt (Path-Traversal-Verdacht).
+          ./tools/security/check_permissions.sh --check-only
+
+      - name: scan_secrets.sh ausfuehren
+        run: ./tools/security/scan_secrets.sh
+
+  install-smoke-test:
+    name: install.sh in isolierter Umgebung testen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installation, Idempotenz und Backup-Logik verifizieren
+        run: |
+          set -euo pipefail
+          repo_dir="$(pwd)"
+
+          # Isoliertes $HOME fuer den Test - install.sh darf den Runner-Home
+          # (bzw. dessen .bashrc) unter keinen Umstaenden anfassen.
+          export HOME
+          HOME="$(mktemp -d)"
+
+          echo "== Erster Lauf: frische Installation =="
+          "${repo_dir}/install.sh"
+
+          shopt -s nullglob
+          bashrc_modules=("${repo_dir}"/bashrc.d/*.sh)
+          tool_scripts=("${repo_dir}"/tools/*/*.sh)
+          shopt -u nullglob
+
+          for module in "${bashrc_modules[@]}"; do
+            name="$(basename -- "$module")"
+            [ -f "${HOME}/.bashrc.d/${name}" ] \
+              || { echo "FEHLER: ${name} wurde nicht nach \${HOME}/.bashrc.d installiert" >&2; exit 1; }
+          done
+
+          for tool_src in "${tool_scripts[@]}"; do
+            tool_name="$(basename -- "$(dirname -- "$tool_src")")"
+            script_name="$(basename -- "$tool_src")"
+            [ -f "${HOME}/.local/lib/system_id/tools/bash/${tool_name}/${script_name}" ] \
+              || { echo "FEHLER: ${tool_name}/${script_name} wurde nicht installiert" >&2; exit 1; }
+          done
+
+          marker_count="$(grep -cF '# >>> System_ID bashrc.d loader >>>' "${HOME}/.bashrc")"
+          [ "$marker_count" -eq 1 ] \
+            || { echo "FEHLER: Loader-Marker ${marker_count}x vorhanden (erwartet: 1)" >&2; exit 1; }
+
+          echo "== Zweiter Lauf: Idempotenz + Backup-Logik =="
+          "${repo_dir}/install.sh"
+
+          marker_count="$(grep -cF '# >>> System_ID bashrc.d loader >>>' "${HOME}/.bashrc")"
+          [ "$marker_count" -eq 1 ] \
+            || { echo "FEHLER: Loader-Marker nach zweitem Lauf ${marker_count}x vorhanden (erwartet weiterhin: 1)" >&2; exit 1; }
+
+          first_module="$(basename -- "${bashrc_modules[0]}")"
+          [ -f "${HOME}/.bashrc.d/${first_module}.bak" ] \
+            || { echo "FEHLER: Backup ${first_module}.bak wurde beim zweiten Lauf nicht erstellt" >&2; exit 1; }
+
+          echo "== Dritter Lauf: Backup-Nummerierung (.bak -> .bak1) =="
+          "${repo_dir}/install.sh"
+
+          # .bak aus dem zweiten Lauf muss erhalten bleiben (nie ueberschrieben,
+          # backup_existing() sucht die erste freie Nummer), der dritte Lauf
+          # legt zusaetzlich .bak1 an.
+          [ -f "${HOME}/.bashrc.d/${first_module}.bak" ] \
+            || { echo "FEHLER: ${first_module}.bak wurde beim dritten Lauf ueberschrieben/entfernt" >&2; exit 1; }
+          [ -f "${HOME}/.bashrc.d/${first_module}.bak1" ] \
+            || { echo "FEHLER: ${first_module}.bak1 wurde beim dritten Lauf nicht angelegt (Nummerierung greift nicht)" >&2; exit 1; }
+
+          marker_count="$(grep -cF '# >>> System_ID bashrc.d loader >>>' "${HOME}/.bashrc")"
+          [ "$marker_count" -eq 1 ] \
+            || { echo "FEHLER: Loader-Marker nach drittem Lauf ${marker_count}x vorhanden (erwartet weiterhin: 1)" >&2; exit 1; }
+
+          echo "install.sh: Installation, Idempotenz, Backup-Nummerierung und Loader-Marker verifiziert."
