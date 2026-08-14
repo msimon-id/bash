@@ -19,7 +19,7 @@ tools/
 ## Installation
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/msimon-id/bash.git
 cd bash
 ./install.sh
 ```
