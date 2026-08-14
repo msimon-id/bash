@@ -1,90 +1,77 @@
-# ============================
-# 1. Alles ignorieren, Verzeichnisse für Rekursion erlauben
-# ============================
+# ==============================================================================
+#  System_ID
+# ------------------------------------------------------------------------------
+#  Whitelist-Strategie: Standardmaessig ist ALLES ignoriert (Abschnitt 1);
+#  nur die in Abschnitt 2 freigegebenen Dateitypen werden versioniert.
+#  Abschnitt 3 grenzt Markdown zusaetzlich auf README.md ein. Neue Dateien
+#  landen dadurch nie "aus Versehen" im Repo, sondern muessen bewusst ueber
+#  die Whitelist erlaubt werden. Abschnitt 4 haertet zusaetzlich gezielt
+#  gegen versehentlich committete Geheimnisse/Artefakte - auch fuer
+#  Dateitypen, die laut Abschnitt 2/3 eigentlich erlaubt waeren. Jedes Muster
+#  kommt in dieser Datei nur genau einmal vor: eine zuvor per '!' erlaubte
+#  Dateiendung an anderer Stelle erneut auszuschliessen (oder umgekehrt)
+#  fuehrt zu stillen, schwer nachvollziehbaren Ueberraschungen, da bei Git
+#  innerhalb einer .gitignore die zuletzt passende Regel gewinnt.
+# ==============================================================================
+
+# --- 1. Alles ignorieren, Verzeichnisse fuer die Rekursion erlauben --------
 *
 !*/
 
-# ============================
-# 2. Whitelist (Beispiel)
-# ============================
+# --- 2. Whitelist: Dateitypen, die dieses Repo enthalten soll --------------
 !*.sh
-!*.md
+!*.py
+!*.bats
 !.gitignore
 !LICENSE
-!lib/
-!lib/**/*.sh
-!tests/
-!tests/**/*.sh
-!scripts/
-!scripts/**/*.sh
+!.github/workflows/*.yml
 
-# ============================
-# 3. Explizit ausschließen (überschreibt Whitelist)
-# ============================
+# --- 3. Dokumentation: nur README.md, keine sonstigen Markdown-Dateien -----
+# Bewusst kein pauschales '!*.md' - lose Notiz-/Entwurfsdateien (TODO.md,
+# NOTES.md, Kopien von Chat-Exports o.ae.) sollen nicht automatisch
+# versioniert werden. '!README.md' greift ohne fuehrenden Slash in jedem
+# Verzeichnis (bashrc.d/README.md, tools/<tool>/README.md, ...), nicht nur
+# im Repo-Root.
+*.md
+!README.md
 
-# --- Secrets & Konfiguration mit sensiblen Daten ---
+# --- 4. Haertung: explizit ausschliessen, auch wenn Abschnitt 2/3 es erlauben -
+
+# Geheimnisse / Zugangsdaten
 *.env
 .env.*
 *.pem
 *.key
 *.crt
-*secret*
-*credential*
-config.local.sh
+*.p12
+*.pfx
+id_rsa*
+id_dsa*
+id_ecdsa*
+id_ed25519*
 .secrets/
 
-# --- ShellCheck / Linting Cache ---
-.shellcheckrc.local
-.cache/
-
-# --- Editor / IDE ---
+# Editor / IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# --- OS-generierte Dateien ---
+# Betriebssystem-Artefakte
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# --- Logs & Laufzeit-Artefakte ---
+# Logs, Laufzeit- und Backup-Dateien
 *.log
 *.pid
 *.lock
-/tmp/
 *.tmp
-
-# --- Test-/Coverage-Output ---
-coverage/
-*.bats.log
-test-results/
-kcov-output/
-
-# --- Backup- & temporäre Editor-Dateien ---
 *.bak
 *.orig
 *.rej
 
-# --- Lokale Overrides ---
+# Lokale Ueberschreibungen / Editor-Sitzungsdaten
 *.local.sh
-.env.local
-
-# --- Paketmanager-Reste (falls z. B. bats via npm/git-submodule) ---
-node_modules/
-vendor/bats-core/
-vendor/bats-support/
-vendor/bats-assert/
-
-# 4. Verzeichnisse, die trotzdem komplett raus sollen (z.B. Build-Output)
-node_modules/
-venv/
-*.log
-*.md
 .claude/
-.git/
-id_*
-*.crt
-*.key
-*.pem
