@@ -1,6 +1,7 @@
 # ==============================================================================
 #  System_ID
 # ------------------------------------------------------------------------------
+# shellcheck shell=bash
 #  Datei         : 20-functions.sh
 #  Beschreibung  : Shell-Funktionen fuer Navigation, Datei-Operationen,
 #                  System-/Prozess-Monitoring, Text-Suche und den
@@ -55,18 +56,31 @@ rm() { command rm -i "$@"; }
 # Datei duplizieren
 dup() {
     if [ -z "$1" ]; then
-        echo "Usage: dup <file>"
+        echo "Verwendung: dup <datei>"
         return 1
     fi
-    cp "$1" "${1%.*}.bak.${1##*.}"
-    echo "✓ Backup: ${1%.*}.bak.${1##*.}"
+    local base name ext target
+    base="$(basename -- "$1")"
+    # Dotfiles ohne weiteren Punkt (z.B. ".env") haben laut ${var%.*}/${var##*.}
+    # keine "Endung" - der fuehrende Punkt wuerde sonst selbst als
+    # Endungstrenner missverstanden und der eigentliche Name ginge verloren
+    # (".env" -> ".bak.env" statt eines Namens, der ".env" noch erkennen laesst).
+    if [[ "$base" == .* && "$base" != *.*.* ]]; then
+        target="${1}.bak"
+    else
+        name="${1%.*}"
+        ext="${1##*.}"
+        target="${name}.bak.${ext}"
+    fi
+    cp -- "$1" "$target"
+    echo "✓ Backup: ${target}"
 }
 
 # Größte Dateien im aktuellen Verzeichnis
 bigfiles() { find . -type f -printf '%s %p\n' | sort -rn | head -20 | awk '{size=$1; $1=""; sub(/^ /,""); printf "%.1f MB: %s\n", size/1048576, $0}'; }
 
 # Größte Verzeichnisse
-bigdirs() { du -sh */ 2>/dev/null | sort -hr | head -10; }
+bigdirs() { du -sh -- */ 2>/dev/null | sort -hr | head -10; }
 
 # 3. SYSTEM & PROZESSE
 # ===============================
@@ -83,7 +97,7 @@ pgrep-name() { pgrep -a "$1" | head -5; }
 # Offene Ports anzeigen
 #ports() { ss -tlnp 2>/dev/null | grep LISTEN; }
 # Netzwerk-Aktivität (Linux)
-netstat-active() { ss -tan | grep ESTABLISHED | wc -l; }
+netstat-active() { ss -tan | grep -c ESTABLISHED; }
 
 # CPU-Auslastung
 cpu() {
@@ -98,6 +112,14 @@ cpu() {
     totalB=$((user2 + nice2 + sys2 + idleB + irq2 + softirq2 + steal2))
     diff_idle=$((idleB - idleA))
     diff_total=$((totalB - totalA))
+    # diff_total kann 0 sein, wenn beide /proc/stat-Samples identisch
+    # ausfallen (z.B. im 0.5s-Sample-Fenster pausierter/eingefrorener
+    # Container/Cgroup) - ohne Guard wuerde die Arithmetik unten mit
+    # "division by 0" abbrechen statt einen Wert auszugeben.
+    if [ "$diff_total" -eq 0 ]; then
+        echo "CPU: n/a (keine Aktivitaet im Messfenster)"
+        return 0
+    fi
     usage=$(( (1000 * (diff_total - diff_idle) / diff_total + 5) / 10 ))
     echo "CPU: ${usage}%"
 }
@@ -128,17 +150,29 @@ myipis() {
 # Rekursiv nach Text in Dateien suchen (mit Zeilennummern)
 greps() { grep -rn "$1" "${2:-.}" --color=auto; }
 
-# Wörter zählen (auch in Subdirs)
-wc-all() { find "${1:-.}" -type f -exec wc -l {} + | tail -1; }
+# Zeilen zaehlen (auch in Subdirs) - Dateiinhalte werden zu einem einzigen
+# 'wc -l' gestreamt statt je Batch ein eigenes 'wc -l' aufzurufen: bei
+# vielen Dateien splittet 'find -exec ... +' (bzw. xargs) die Aufrufliste
+# an ARG_MAX in mehrere Batches, ein 'tail -1' auf mehrere Batch-Summen
+# wuerde dann nur die letzte davon zeigen statt der Gesamtsumme.
+wc-all() { find "${1:-.}" -type f -print0 | xargs -0 cat -- | wc -l; }
 
 # Text in Datei ersetzen (sed wrapper)
 replace() {
     if [ "$#" -lt 3 ]; then
-        echo "Usage: replace <pattern> <replacement> <file>"
+        echo "Verwendung: replace <muster> <ersetzung> <datei>"
         return 1
     fi
+    # Neben '/' (Trennzeichen) muessen im Replacement-Teil auch '&'
+    # (steht in sed fuer "gesamter Treffer") und '\' escaped werden - sonst
+    # werden Werte wie "a&b" oder ein Pfad mit Backslash still falsch
+    # ersetzt statt als Literal eingesetzt zu werden. Im Pattern-Teil ist
+    # nur '/' relevant, da pattern als literaler String (kein Regex-Aufruf
+    # durch den Nutzer) benutzt wird.
     local pattern="${1//\//\\/}"
-    local repl="${2//\//\\/}"
+    local repl="${2//\\/\\\\}"
+    repl="${repl//\//\\/}"
+    repl="${repl//&/\\&}"
     sed -i.bak "s/${pattern}/${repl}/g" "$3"
     echo "✓ Ersetzt in $3 (Backup: $3.bak)"
 }
@@ -158,14 +192,14 @@ findtext() { find . -type f -name "*.${2:-txt}" -exec grep -l "$1" {} \; 2>/dev/
 
 xtract() {
     if [[ $# -eq 0 ]]; then
-        echo "Usage: xtract <archivdatei>" >&2
+        echo "Verwendung: xtract <archivdatei>" >&2
         return 1
     fi
 
     local archive="$1"
 
     if [[ ! -f "${archive}" ]]; then
-        echo "File not found: ${archive}" >&2
+        echo "Fehler: Datei nicht gefunden: ${archive}" >&2
         return 1
     fi
 
@@ -188,7 +222,7 @@ xtract() {
         *.gz)      base="${base%.gz}"      ;;
         *.bz2)     base="${base%.bz2}"     ;;
         *)
-            echo "Unknown archive type: ${archive}" >&2
+            echo "Fehler: Unbekannter Archivtyp: ${archive}" >&2
             return 1
             ;;
     esac
@@ -216,14 +250,14 @@ xtract() {
             bunzip2 "${target}/$(basename -- "${archive}")"
             ;;
         *)
-            echo "Unknown archive type: ${archive}" >&2
+            echo "Fehler: Unbekannter Archivtyp: ${archive}" >&2
             rmdir -- "${target}" 2>/dev/null
             return 1
             ;;
     esac
 }
 
-mkcd() { mkdir -p "$1" && cd "$1"; }
+mkcd() { mkdir -p "$1" && cd "$1" || return 1; }
 
 # 5. SICHERHEIT
 # ===============================
@@ -324,7 +358,7 @@ security-checkup() {
             *)          printf "  ${c_err}✗${c_reset} SELinux %s\n" "$mode"; errors=$((errors+1)) ;;
         esac
     else
-        printf "  ${c_warn}·${c_reset} SELinux nicht installiert\n"
+        printf "  %s·%s SELinux nicht installiert\n" "$c_warn" "$c_reset"
     fi
 
     _sc_header "ZEITSYNCHRONISATION"
@@ -342,13 +376,13 @@ security-checkup() {
         local synced
         synced=$(timedatectl show -p NTPSynchronized --value 2>/dev/null)
         if [ "$synced" = "yes" ]; then
-            printf "  ${c_ok}✓${c_reset} systemd-timesyncd synchronisiert\n"
+            printf "  %s✓%s systemd-timesyncd synchronisiert\n" "$c_ok" "$c_reset"
         else
-            printf "  ${c_err}✗${c_reset} systemd-timesyncd NICHT synchronisiert\n"
+            printf "  %s✗%s systemd-timesyncd NICHT synchronisiert\n" "$c_err" "$c_reset"
             errors=$((errors+1))
         fi
     else
-        printf "  ${c_warn}·${c_reset} weder chrony noch systemd-timesyncd gefunden\n"
+        printf "  %s·%s weder chrony noch systemd-timesyncd gefunden\n" "$c_warn" "$c_reset"
     fi
 
     _sc_header "LOGS (Aktualitaet & Fehler)"
@@ -407,7 +441,7 @@ security-checkup() {
 
     _sc_header "ZUSAMMENFASSUNG"
     if [ "$errors" -eq 0 ] && [ "$warnings" -eq 0 ]; then
-        printf "  ${c_ok}Alles im gruenen Bereich.${c_reset}\n\n"
+        printf "  %sKeine Fehler oder Warnungen festgestellt.%s\n\n" "$c_ok" "$c_reset"
     else
         printf "  ${c_err}%s Fehler${c_reset}, ${c_warn}%s Warnung(en)${c_reset} - Details oben.\n\n" "$errors" "$warnings"
     fi

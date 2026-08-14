@@ -1,5 +1,7 @@
 # bash-dotfiles
 
+[![CI](https://github.com/msimon-id/bash/actions/workflows/ci.yml/badge.svg)](https://github.com/msimon-id/bash/actions/workflows/ci.yml)
+
 Persönliche Bash-Konfiguration (modulare `bashrc.d/*.sh`, geladen aus der
 originalen `~/.bashrc`) und eigenständige Kommandozeilen-Tools (`tools/`) für
 Admin-/Server-Workflows (AlmaLinux/Debian, Docker/Podman, Kubernetes,
@@ -13,7 +15,10 @@ install.sh               # Installiert bashrc.d/*.sh nach $HOME, haengt Loader a
 tools/
 ├── lib/lib_common.sh     # Gemeinsame Basisfunktionen (Logging, Cleanup-Trap, Retry, Validierung)
 ├── externalip/            # Ermittelt oeffentliche IPv4/IPv6 + PTR-Hostname
-└── speedtest/             # Bandbreiten-/Latenztest (Cloudflare/Ookla, ohne Fremdcode-Ausfuehrung)
+├── speedtest/             # Bandbreiten-/Latenztest (Cloudflare/Ookla, ohne Fremdcode-Ausfuehrung)
+└── security/              # Pre-Push-Sicherheitspruefungen (Rechte haerten, Secrets scannen)
+tests/                   # bats-core-Tests (siehe Abschnitt "Qualitätssicherung")
+.github/workflows/       # CI-Pipeline (ShellCheck + bats-core)
 ```
 
 ## Installation
@@ -51,6 +56,49 @@ eingebunden (`externalip`, `speedtest`) - ohne Installation bleiben diese
 Kommandonamen einfach unbekannt, kein Fehler beim Shellstart. Details je Tool
 im Kopfkommentar der jeweiligen Datei.
 
+## Sicherheits-Tooling (Pre-Push)
+
+Unter `tools/security/` liegt eine dreiteilige Pruefkette, die vor einem
+`git push` laufen soll:
+
+- `check_permissions.sh` prueft und haertet Datei-/Verzeichnisrechte im
+  Arbeitsbaum (Verzeichnisse `2770`, als ausfuehrbar markierte Dateien
+  `0770`, sonstige Dateien `0660`, geheimnisverdaechtige Dateien wie
+  `*.pem`/`.env`/`*credential*` immer `0600`). Erkennt zusaetzlich Symlinks,
+  die aus dem Repository herauszeigen, als Sicherheitsproblem.
+- `scan_secrets.sh` durchsucht die komplette Commit-Historie mit `gitleaks`
+  nach versehentlich committeten Geheimnissen.
+- `pre-push.sh` orchestriert beide Schritte und bricht beim ersten
+  Fehlschlag ab (der Push wird dann von git selbst verhindert).
+
+Als echten Git-Hook einbinden (pro lokalem Klon, `.git/hooks` wird nicht
+mitversioniert):
+
+```bash
+ln -sf ../../tools/security/pre-push.sh .git/hooks/pre-push
+```
+
+Jedes Teilskript ist auch einzeln aufrufbar, z. B.
+`./tools/security/check_permissions.sh --check-only` fuer eine reine
+Pruefung ohne automatisches `chmod` (z. B. in CI).
+
+## Qualitätssicherung
+
+Jeder Push/Pull-Request durchläuft die CI-Pipeline (`.github/workflows/ci.yml`):
+
+- **ShellCheck** über sämtliche `*.sh`-Dateien des Repositorys (`-x -P SCRIPTDIR`,
+  damit relative `source`-Pfade wie in `tools/*/*.sh` korrekt aufgelöst werden).
+- **bats-core** über `tests/*.bats` - aktuell die Input-Validierungsfunktionen
+  aus `tools/lib/lib_common.sh` (u. a. `is_valid_ipv4`, `is_valid_hostname`,
+  `is_public_hostname` als Regressionstest für den SSRF-Schutz).
+
+Lokal ausführen:
+
+```bash
+shellcheck --shell=bash -x -P SCRIPTDIR $(find . -name '*.sh' -not -path './.git/*')
+bats tests/
+```
+
 ## Hinweise
 
 - `bashrc.d/60-ssh-agent.sh` startet bei Bedarf automatisch einen `ssh-agent`
@@ -58,3 +106,7 @@ im Kopfkommentar der jeweiligen Datei.
   Umgebung anpassen.
 - Sensible Dateien (SSH-Keys, Backups, lokale Session-Daten) sind über
   `.gitignore` ausgeschlossen.
+
+## Lizenz
+
+[MIT](LICENSE)

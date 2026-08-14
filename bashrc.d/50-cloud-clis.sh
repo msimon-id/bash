@@ -1,6 +1,7 @@
 # ==============================================================================
 #  System_ID
 # ------------------------------------------------------------------------------
+# shellcheck shell=bash
 #  Datei         : 50-cloud-clis.sh
 #  Beschreibung  : PATH-/Completion-Einbindung fuer die gaengigsten Cloud-CLIs
 #                  (Google Cloud SDK, AWS CLI, Microsoft Azure CLI, Oracle
@@ -14,9 +15,11 @@
 
 # --- Google Cloud SDK (gcloud) ----------------------------------------------
 if [ -f "$HOME/google-cloud-sdk/path.bash.inc" ]; then
+    # shellcheck source=/dev/null
     source "$HOME/google-cloud-sdk/path.bash.inc"
 fi
 if [ -f "$HOME/google-cloud-sdk/completion.bash.inc" ]; then
+    # shellcheck source=/dev/null
     source "$HOME/google-cloud-sdk/completion.bash.inc"
 fi
 
@@ -31,6 +34,7 @@ fi
 # Paketinstallation (apt/dnf) legt das Completion-Skript unter
 # /etc/bash_completion.d ab; ohne diese Datei wird der Block uebersprungen.
 if [ -f /etc/bash_completion.d/azure-cli ]; then
+    # shellcheck source=/dev/null
     source /etc/bash_completion.d/azure-cli
 fi
 

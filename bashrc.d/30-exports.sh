@@ -1,6 +1,7 @@
 # ==============================================================================
 #  System_ID
 # ------------------------------------------------------------------------------
+# shellcheck shell=bash
 #  Datei         : 30-exports.sh
 #  Beschreibung  : Umgebungsvariablen und PATH-Erweiterungen.
 #  Repository    : bash

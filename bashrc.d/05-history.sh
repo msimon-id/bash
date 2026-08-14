@@ -1,6 +1,7 @@
 # ==============================================================================
 #  System_ID
 # ------------------------------------------------------------------------------
+# shellcheck shell=bash
 #  Datei         : 05-history.sh
 #  Beschreibung  : History-Verhalten und grundlegende Shell-Optionen
 #                  (HISTCONTROL, Groesse, checkwinsize).

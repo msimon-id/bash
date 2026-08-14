@@ -1,6 +1,7 @@
 # ==============================================================================
 #  System_ID
 # ------------------------------------------------------------------------------
+# shellcheck shell=bash
 #  Datei         : 70-locale.sh
 #  Beschreibung  : Setzt Sprach-/Locale-Einstellungen der interaktiven Shell.
 #  Repository    : bash

@@ -1,6 +1,7 @@
 # ==============================================================================
 #  System_ID
 # ------------------------------------------------------------------------------
+# shellcheck shell=bash
 #  Datei         : 10-aliases.sh
 #  Beschreibung  : Alias-Sammlung fuer AlmaLinux-/Debian-Admin-Workflows
 #                  (System, Systemd, Firewall, Docker/Podman/Kubernetes,
@@ -34,6 +35,12 @@ alias sclfailed='sudo systemctl list-units --type=service --state=failed'
 alias scl='sudo systemctl list-units --type=service'
 alias reboot='sudo systemctl reboot'
 alias shutdown='sudo systemctl poweroff'
+# Bewusste Komfort-Entscheidung: reboot/shutdown starten ohne Rueckfrage.
+# Wer stattdessen lieber eine Sicherheitsabfrage moechte, muss unten nur
+# das '#' vor der jeweiligen Zeile entfernen (keine weitere Anpassung
+# noetig) - die spaeter geladene Zeile ueberschreibt den Alias von oben:
+#alias reboot='read -rp "System jetzt neu starten? [y/N] " a && [[ $a == [yY] ]] && sudo systemctl reboot'
+#alias shutdown='read -rp "System jetzt herunterfahren? [y/N] " a && [[ $a == [yY] ]] && sudo systemctl poweroff'
 
 # ----[ 7. PACKAGE MGMT (Debian/apt & AlmaLinux/dnf) ]--------
 if command -v dnf >/dev/null 2>&1; then
@@ -59,7 +66,11 @@ fi
 # ----[ 8. NETZWERK & CONNECTIVITY ]-------------------------
 alias netstat='ss -tuln'
 alias ports='ss -tulpen'
-alias myip='hostname -I | awk "{print \$1}"'
+# Als Funktion statt Alias: ShellCheck (SC2142) lehnt bei Aliasen ein
+# scheinbares '$1' im Wert ab, weil es dort mit einem Positionsparameter des
+# Alias-Aufrufs verwechselt werden koennte - hier ist es aber awks eigenes
+# Feld-'$1', das erst beim Ausfuehren der Funktion gebraucht wird.
+myip() { hostname -I | awk '{print $1}'; }
 alias pingg='ping -c 5 8.8.8.8'
 alias trace='traceroute 8.8.8.8'
 alias ifc='ip -brief address'
@@ -312,7 +323,8 @@ alias sar1='sar 1 5'
 alias dmesglive='sudo dmesg -w'
 alias dmesgerr='sudo dmesg --level=err,crit,alert,emerg'
 alias load='cat /proc/loadavg'
-alias zombies='ps aux | awk "\$8==\"Z\""'
+# Als Funktion statt Alias, aus demselben Grund wie 'myip' oben (SC2142).
+zombies() { ps aux | awk '$8=="Z"'; }
 alias temps='sensors'
 alias smart='sudo smartctl -a'
 alias disks='lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,FSTYPE'
@@ -368,7 +380,12 @@ alias nettest='curl -Is https://example.com | head -n1'
 # Funktionsdefinition gleichen Namens -> Syntaxfehler beim Laden). Das
 # eigentliche Tool liegt unter tools/speedtest/speedtest.sh und ersetzt
 # bewusst den frueheren ungeprueften curl-\|-python-Download.
-alias passwort='openssl rand -base64 24 | tr -d '=+/' | head -c 32'
+# Doppelte Anfuehrungszeichen fuer den gesamten Alias-Wert (statt
+# verschachtelter einfacher Quotes wie 'openssl ... | tr -d '=+/' | ...'):
+# letzteres funktioniert nur zufaellig richtig, weil Bash die drei
+# Quote-Fragmente wieder zu einem String zusammensetzt - liest sich aber
+# wie ein Quoting-Fehler und bricht bei jeder Bearbeitung leicht.
+alias passwort="openssl rand -base64 24 | tr -d '=+/' | head -c 32"
 
 # SSH-Key-Management
 alias sshkeygen='ssh-keygen -t ed25519 -a 100'
