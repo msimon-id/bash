@@ -225,7 +225,10 @@ is_valid_https_url() {
 #   Loest den Hostnamen auf und weist private/link-lokale/Loopback-Zieladressen
 #   zurueck, bevor Requests dorthin abgesetzt werden (Schutz gegen SSRF-artige
 #   Umleitung auf interne Endpunkte ueber eine manipulierte/kompromittierte
-#   Drittanbieter-API-Antwort).
+#   Drittanbieter-API-Antwort). Deckt neben den klassischen RFC-1918-/
+#   Loopback-/Link-lokal-Bereichen zusaetzlich CGNAT (RFC 6598), "this
+#   network" (0.0.0.0/8), das reservierte 192.0.0.0/24 sowie IPv6 ULA
+#   (RFC 4193, fc00::/7) ab.
 #   Parameter:
 #     $1 - zu pruefender Hostname
 #   Rueckgabewert: 0 wenn ausschliesslich oeffentliche Adressen aufgeloest wurden
@@ -236,8 +239,11 @@ is_public_hostname() {
   while IFS= read -r ip; do
     [[ -n "${ip}" ]] || continue
     case "${ip}" in
-      127.*|10.*|192.168.*|169.254.*|::1|fe80:*) return 1 ;;
+      0.*|127.*|10.*|192.168.*|169.254.*|::1|fe80:*) return 1 ;;
       172.1[6-9].*|172.2[0-9].*|172.3[0-1].*) return 1 ;;
+      100.6[4-9].*|100.[7-9][0-9].*|100.1[01][0-9].*|100.12[0-7].*) return 1 ;;
+      192.0.0.*) return 1 ;;
+      [Ff][Cc]*:*|[Ff][Dd]*:*) return 1 ;;
     esac
   done < <(getent ahosts "${host}" 2>/dev/null | awk '{print $1}' | sort -u)
   return 0

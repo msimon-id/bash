@@ -18,7 +18,13 @@
 #                  msimon-id) Vorrang vor zusaetzlicher Haertung haben.
 #                  Geheimnisverdaechtige Dateien (Schluessel, .env,
 #                  *credential*, *secret*, *token*) bleiben unabhaengig davon
-#                  immer 0600, auch fuer die eigene Gruppe nicht lesbar.
+#                  immer 0600, auch fuer die eigene Gruppe nicht lesbar - ist
+#                  eine solche Datei zugleich git-als-ausfuehrbar markiert
+#                  (z.B. ein Tool-Skript wie scan_secrets.sh, dessen Name
+#                  selbst auf die Heuristik anschlaegt), wird stattdessen 0700
+#                  gesetzt: weiterhin kein Gruppen-/Other-Zugriff, aber ohne
+#                  dem Skript sein fuer den Betrieb notwendiges Ausfuehrbar-Bit
+#                  zu entziehen.
 #                  Ob eine Datei "ausfuehrbar sein soll" wird bewusst aus dem
 #                  von git verwalteten Blob-Modus (100755 vs. 100644) via
 #                  'git ls-files -s' gelesen statt aus dem aktuellen
@@ -71,6 +77,14 @@ readonly DIR_MODE="2770"
 readonly SCRIPT_MODE="0770"
 readonly FILE_MODE="0660"
 readonly SECRET_MODE="0600"
+# Fuer geheimnisverdaechtige Dateien, die zugleich von git als ausfuehrbar
+# (100755) gefuehrt werden - z.B. ein Tool-Skript wie scan_secrets.sh, dessen
+# Name selbst auf die is_secret_path()-Heuristik anschlaegt, obwohl es kein
+# Geheimnis enthaelt, sondern eines sucht. SECRET_MODE (0600) wuerde das
+# Ausfuehrbar-Bit entziehen und das Skript damit unbenutzbar machen (z.B. im
+# Aufruf durch pre-push.sh) - SECRET_SCRIPT_MODE haertet weiterhin auf
+# "nur Owner" (kein Gruppen-/Other-Zugriff), erhaelt aber x fuer den Owner.
+readonly SECRET_SCRIPT_MODE="0700"
 
 # Als pre-push-Hook ruft git dieses Skript mit <remote-name> <remote-url> als
 # Positionsargumenten auf (plus Ref-Updates auf STDIN, die hier nicht
@@ -220,7 +234,11 @@ while IFS= read -r -d '' entry; do
     fi
 
     if is_secret_path "$rel_path"; then
-        apply_mode "$abs_path" "$SECRET_MODE" "Datei (geheimnisverdaechtig)"
+        if [[ "$git_mode" == "100755" ]]; then
+            apply_mode "$abs_path" "$SECRET_SCRIPT_MODE" "Datei (geheimnisverdaechtig, ausfuehrbar)"
+        else
+            apply_mode "$abs_path" "$SECRET_MODE" "Datei (geheimnisverdaechtig)"
+        fi
     elif [[ "$git_mode" == "100755" ]]; then
         apply_mode "$abs_path" "$SCRIPT_MODE" "Datei (ausfuehrbar)"
     else

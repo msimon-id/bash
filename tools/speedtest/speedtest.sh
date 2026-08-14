@@ -78,7 +78,7 @@ export LC_ALL=C
 IS_TTY=0
 [ -t 1 ] && IS_TTY=1
 
-# Spinner-Frames: huebscher Braille-Spinner auf UTF-8-faehigen Terminals,
+# Spinner-Frames: Braille-basierter Spinner auf UTF-8-faehigen Terminals,
 # sonst ASCII-Fallback. Die urspruengliche Locale wird herangezogen, weil
 # LC_ALL oben bereits hart auf C gesetzt wurde (nur fuer Zahlenformatierung).
 if [[ "$LOCALE_BEFORE_C_FORCE" =~ [Uu][Tt][Ff]-?8 ]]; then
@@ -291,11 +291,16 @@ run_ping() {
         loss_line=$(printf '%s' "$out" | grep -Eo '[0-9]+(\.[0-9]+)?% packet loss' | head -1)
         PACKET_LOSS_PCT=$(printf '%s' "$loss_line" | grep -Eo '^[0-9.]+')
     else
-        # Kein ICMP moeglich (z.B. Firewall) - Naeherung ueber TCP-Connect-Zeiten
+        # Kein ICMP moeglich (z.B. Firewall) - Naeherung ueber TCP-Connect-Zeiten.
+        # '|| t*="0"' wie beim DNS-Timing oben: ein einzelner fehlgeschlagener
+        # Connect-Versuch (z.B. kurzzeitig nicht erreichbar) darf unter
+        # set -e nicht das ganze Skript abbrechen, nachdem Download/Upload
+        # bereits erfolgreich abgeschlossen sind - wirkt sich nur auf
+        # Ping/Jitter als Naeherungswert aus, nicht auf das Testergebnis.
         local t1 t2 t3
-        t1=$(curl -o /dev/null -s --max-time 5 --connect-timeout 3 -w '%{time_connect}' "$fallback_url")
-        t2=$(curl -o /dev/null -s --max-time 5 --connect-timeout 3 -w '%{time_connect}' "$fallback_url")
-        t3=$(curl -o /dev/null -s --max-time 5 --connect-timeout 3 -w '%{time_connect}' "$fallback_url")
+        t1=$(curl -o /dev/null -s --max-time 5 --connect-timeout 3 -w '%{time_connect}' "$fallback_url") || t1="0"
+        t2=$(curl -o /dev/null -s --max-time 5 --connect-timeout 3 -w '%{time_connect}' "$fallback_url") || t2="0"
+        t3=$(curl -o /dev/null -s --max-time 5 --connect-timeout 3 -w '%{time_connect}' "$fallback_url") || t3="0"
         PING_MS=$(awk -v a="$t1" -v b="$t2" -v c="$t3" 'BEGIN{printf "%.1f", (a+b+c)/3*1000}')
         JITTER_MS=$(awk -v a="$t1" -v b="$t2" -v c="$t3" 'BEGIN{
             avg=(a+b+c)/3
