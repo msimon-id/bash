@@ -161,7 +161,16 @@ apply_mode() {
         return 0
     fi
 
-    owner_uid="$(stat -c '%u' -- "$path")"
+    # stat kann hier scheitern, wenn der Pfad zwischen dem chmod-Fehlschlag
+    # oben und diesem Aufruf verschwunden ist (z.B. durch einen parallel
+    # laufenden Prozess) - unter 'set -e' wuerde eine ungeschuetzte Zuweisung
+    # das ganze Skript hart abbrechen, obwohl fuer diesen Fall bereits ein
+    # WARN-und-weiter-Pfad vorgesehen ist.
+    owner_uid="$(stat -c '%u' -- "$path" 2>/dev/null)" || {
+        log_warn "${label} nicht mehr vorhanden oder nicht lesbar, chmod-Fehlschlag nicht naeher einordenbar: ${path}"
+        ((warn_count++)) || true
+        return 0
+    }
     if [[ "$owner_uid" != "$(id -u)" && "$(id -u)" != "0" ]]; then
         log_warn "${label} gehoert anderem Besitzer, chmod nicht moeglich (ist ${have}, soll ${target#0}): ${path}"
         ((warn_count++)) || true

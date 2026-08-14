@@ -50,6 +50,8 @@ id_dsa*
 id_ecdsa*
 id_ed25519*
 .secrets/
+*secret*
+*credential*
 
 # Editor / IDE
 .vscode/

@@ -61,11 +61,14 @@ dup() {
     fi
     local base name ext target
     base="$(basename -- "$1")"
-    # Dotfiles ohne weiteren Punkt (z.B. ".env") haben laut ${var%.*}/${var##*.}
-    # keine "Endung" - der fuehrende Punkt wuerde sonst selbst als
-    # Endungstrenner missverstanden und der eigentliche Name ginge verloren
-    # (".env" -> ".bak.env" statt eines Namens, der ".env" noch erkennen laesst).
-    if [[ "$base" == .* && "$base" != *.*.* ]]; then
+    # Zwei Faelle ohne "echte" Endung im Sinne von ${var%.*}/${var##*.}:
+    # Dateien ganz ohne Punkt (z.B. "Makefile" - sonst blieben name/ext
+    # beide unveraendert "Makefile" und das Ergebnis waere
+    # "Makefile.bak.Makefile") und Dotfiles ohne weiteren Punkt (z.B. ".env" -
+    # der fuehrende Punkt wuerde sonst selbst als Endungstrenner
+    # missverstanden und der eigentliche Name ginge verloren, ".env" ->
+    # ".bak.env" statt eines Namens, der ".env" noch erkennen laesst).
+    if [[ "$base" != *.* || ( "$base" == .* && "$base" != *.*.* ) ]]; then
         target="${1}.bak"
     else
         name="${1%.*}"
@@ -285,7 +288,7 @@ security-checkup() {
     sudo -v 2>/dev/null
 
     _sc_header() {
-        printf "\n${c_bold}%s${c_reset}\n" "$1"
+        printf "\n%s%s%s\n" "$c_bold" "$1" "$c_reset"
         printf -- '------------------------------------------------------------\n'
     }
 
@@ -303,12 +306,12 @@ security-checkup() {
             fi
         done
         if [ -n "$active" ]; then
-            printf "  ${c_ok}✓${c_reset} %-20s aktiv (%s)\n" "$name" "$active"
+            printf "  %s✓%s %-20s aktiv (%s)\n" "$c_ok" "$c_reset" "$name" "$active"
         elif [ -n "$installed" ]; then
-            printf "  ${c_err}✗${c_reset} %-20s installiert, aber NICHT aktiv (%s)\n" "$name" "$installed"
+            printf "  %s✗%s %-20s installiert, aber NICHT aktiv (%s)\n" "$c_err" "$c_reset" "$name" "$installed"
             errors=$((errors+1))
         else
-            printf "  ${c_warn}·${c_reset} %-20s nicht installiert\n" "$name"
+            printf "  %s·%s %-20s nicht installiert\n" "$c_warn" "$c_reset" "$name"
         fi
     }
 
@@ -316,7 +319,7 @@ security-checkup() {
     _sc_log() {
         local name="$1" path="$2" pattern="${3:-error|fail|crit|alert|denied}"
         if ! sudo test -e "$path" 2>/dev/null; then
-            printf "  ${c_warn}·${c_reset} %-20s kein Log gefunden (%s)\n" "$name" "$path"
+            printf "  %s·%s %-20s kein Log gefunden (%s)\n" "$c_warn" "$c_reset" "$name" "$path"
             return
         fi
         local mtime now age_min hits
@@ -326,12 +329,12 @@ security-checkup() {
         hits=$(sudo grep -Eic "$pattern" "$path" 2>/dev/null)
         hits=${hits:-0}
         if [ "$age_min" -le 60 ]; then
-            printf "  ${c_ok}✓${c_reset} %-20s aktuell (Update vor %sm)" "$name" "$age_min"
+            printf "  %s✓%s %-20s aktuell (Update vor %sm)" "$c_ok" "$c_reset" "$name" "$age_min"
         else
-            printf "  ${c_warn}~${c_reset} %-20s ohne Aktivitaet (Update vor %sm)" "$name" "$age_min"
+            printf "  %s~%s %-20s ohne Aktivitaet (Update vor %sm)" "$c_warn" "$c_reset" "$name" "$age_min"
         fi
         if [ "$hits" -gt 0 ]; then
-            printf " - ${c_err}%s Treffer fuer '%s'${c_reset}\n" "$hits" "$pattern"
+            printf " - %s%s Treffer fuer '%s'%s\n" "$c_err" "$hits" "$pattern" "$c_reset"
             warnings=$((warnings+1))
         else
             printf "\n"
@@ -353,9 +356,9 @@ security-checkup() {
     if command -v getenforce &>/dev/null; then
         local mode; mode=$(getenforce 2>/dev/null)
         case "$mode" in
-            Enforcing)  printf "  ${c_ok}✓${c_reset} SELinux %s\n" "$mode" ;;
-            Permissive) printf "  ${c_warn}~${c_reset} SELinux %s (erzwingt nichts)\n" "$mode"; warnings=$((warnings+1)) ;;
-            *)          printf "  ${c_err}✗${c_reset} SELinux %s\n" "$mode"; errors=$((errors+1)) ;;
+            Enforcing)  printf "  %s✓%s SELinux %s\n" "$c_ok" "$c_reset" "$mode" ;;
+            Permissive) printf "  %s~%s SELinux %s (erzwingt nichts)\n" "$c_warn" "$c_reset" "$mode"; warnings=$((warnings+1)) ;;
+            *)          printf "  %s✗%s SELinux %s\n" "$c_err" "$c_reset" "$mode"; errors=$((errors+1)) ;;
         esac
     else
         printf "  %s·%s SELinux nicht installiert\n" "$c_warn" "$c_reset"
@@ -367,9 +370,9 @@ security-checkup() {
         leap=$(chronyc tracking 2>/dev/null | awk -F: '/Leap status/ {gsub(/^ +/,"",$2); print $2}')
         offset=$(chronyc tracking 2>/dev/null | awk -F: '/System time/ {gsub(/^ +/,"",$2); print $2}')
         if [ "$leap" = "Normal" ]; then
-            printf "  ${c_ok}✓${c_reset} chrony synchronisiert (Offset: %s)\n" "${offset:-unbekannt}"
+            printf "  %s✓%s chrony synchronisiert (Offset: %s)\n" "$c_ok" "$c_reset" "${offset:-unbekannt}"
         else
-            printf "  ${c_err}✗${c_reset} chrony NICHT synchronisiert (Leap: %s)\n" "${leap:-unbekannt}"
+            printf "  %s✗%s chrony NICHT synchronisiert (Leap: %s)\n" "$c_err" "$c_reset" "${leap:-unbekannt}"
             errors=$((errors+1))
         fi
     elif command -v timedatectl &>/dev/null; then
@@ -405,7 +408,7 @@ security-checkup() {
             banned_total=$(( banned_total + ${cur:-0} ))
         done
         if [ "$banned_total" -gt 0 ]; then
-            printf "  ${c_warn}fail2ban:${c_reset} %s Jail(s) aktiv, %s IP(s) aktuell gebannt\n" "$jail_count" "$banned_total"
+            printf "  %sfail2ban:%s %s Jail(s) aktiv, %s IP(s) aktuell gebannt\n" "$c_warn" "$c_reset" "$jail_count" "$banned_total"
         else
             printf "  fail2ban: %s Jail(s) aktiv, keine IP aktuell gebannt\n" "$jail_count"
         fi
@@ -415,7 +418,7 @@ security-checkup() {
         local fails
         fails=$(sudo lastb -s "$(date -d '24 hours ago' '+%Y%m%d%H%M%S' 2>/dev/null)" 2>/dev/null | grep -vc '^$\|^btmp begins')
         if [ "${fails:-0}" -gt 0 ]; then
-            printf "  ${c_warn}Fehlgeschlagene Logins (24h):${c_reset} %s\n" "${fails:-0}"
+            printf "  %sFehlgeschlagene Logins (24h):%s %s\n" "$c_warn" "$c_reset" "${fails:-0}"
         else
             printf "  Fehlgeschlagene Logins (24h): 0\n"
         fi
@@ -425,7 +428,7 @@ security-checkup() {
         local avc
         avc=$(sudo ausearch -m avc -ts today 2>/dev/null | grep -c '^type=AVC')
         if [ "${avc:-0}" -gt 0 ]; then
-            printf "  ${c_err}SELinux AVC Denials heute:${c_reset} %s\n" "$avc"
+            printf "  %sSELinux AVC Denials heute:%s %s\n" "$c_err" "$c_reset" "$avc"
             warnings=$((warnings+1))
         fi
     fi
@@ -434,7 +437,7 @@ security-checkup() {
         local rk
         rk=$(sudo grep -c "INFECTED" /var/log/chkrootkit.log 2>/dev/null)
         if [ "${rk:-0}" -gt 0 ]; then
-            printf "  ${c_err}chkrootkit:${c_reset} %s Fund(e) im letzten Log\n" "$rk"
+            printf "  %schkrootkit:%s %s Fund(e) im letzten Log\n" "$c_err" "$c_reset" "$rk"
             errors=$((errors+1))
         fi
     fi
@@ -443,7 +446,7 @@ security-checkup() {
     if [ "$errors" -eq 0 ] && [ "$warnings" -eq 0 ]; then
         printf "  %sKeine Fehler oder Warnungen festgestellt.%s\n\n" "$c_ok" "$c_reset"
     else
-        printf "  ${c_err}%s Fehler${c_reset}, ${c_warn}%s Warnung(en)${c_reset} - Details oben.\n\n" "$errors" "$warnings"
+        printf "  %s%s Fehler%s, %s%s Warnung(en)%s - Details oben.\n\n" "$c_err" "$errors" "$c_reset" "$c_warn" "$warnings" "$c_reset"
     fi
 
     unset -f _sc_header _sc_service _sc_log
