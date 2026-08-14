@@ -184,3 +184,19 @@ mock_getent() {
     mock_getent "testnet.example" "192.0.2.1"
     is_public_hostname "testnet.example"
 }
+
+# --- create_secure_tempfile ------------------------------------------------
+# Nur der Ablehnungspfad wird getestet (reine Template-Validierung ueber
+# is_safe_path, kein echter mktemp-Aufruf noetig) - der Erfolgspfad wuerde
+# eine echte Datei unter /tmp anlegen und widerspraeche damit dem oben
+# dokumentierten Prinzip dieser Testdatei.
+
+@test "create_secure_tempfile: lehnt Template mit Path-Traversal ab, ohne mktemp aufzurufen" {
+    run create_secure_tempfile "../../etc/passwd.XXXXXX"
+    [ "$status" -ne 0 ]
+}
+
+@test "create_secure_tempfile: lehnt Template mit eingebetteter Newline ab" {
+    run create_secure_tempfile $'foo\nbar.XXXXXX'
+    [ "$status" -ne 0 ]
+}
