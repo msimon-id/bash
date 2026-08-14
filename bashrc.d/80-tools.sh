@@ -31,12 +31,13 @@ fi
 # speedtest [Argumente...]
 #   Ruft das installierte speedtest.sh-Tool auf (Bandbreiten-/Latenztest
 #   gegen Cloudflare/speedtest.net).
+# unalias VOR dem if-Block, nicht darin: Bash parst einen kompletten
+# if/fi-Block als eine Einheit, bevor er etwas davon ausfuehrt - ein
+# unalias innerhalb desselben Blocks kaeme fuer die Alias-Expansion der
+# Funktionsdefinition beim Parsen zu spaet (gleiche Begruendung wie bei
+# myip() in bashrc.d/10-aliases.sh, nur mit dieser zusaetzlichen Falle).
+unalias speedtest 2>/dev/null
 if [ -x "${TOOLS_DIR}/speedtest/speedtest.sh" ]; then
-    # unalias zuerst: siehe gleiche Begruendung bei myip() in
-    # bashrc.d/10-aliases.sh - ein vorbestehender Alias gleichen Namens
-    # (Distro-Default, Framework) wuerde die Funktionsdefinition sonst
-    # mit einem Syntaxfehler abbrechen lassen.
-    unalias speedtest 2>/dev/null
     speedtest() {
         "${TOOLS_DIR}/speedtest/speedtest.sh" "$@"
     }
