@@ -363,7 +363,11 @@ alias ssc='grim -g "$(slurp)" - | wl-copy'
 # ----[ 17. ADMIN TOOLS ]-----------------------------------
 alias sshconfig='sudo nano /etc/ssh/sshd_config'
 alias nettest='curl -Is https://example.com | head -n1'
-alias speedtest='curl -s https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py | python3 -'
+# speedtest: kein Alias mehr - kollidiert sonst mit der Funktion aus
+# bashrc.d/80-tools.sh (Bash expandiert Aliase vor dem Parsen einer
+# Funktionsdefinition gleichen Namens -> Syntaxfehler beim Laden). Das
+# eigentliche Tool liegt unter tools/speedtest/speedtest.sh und ersetzt
+# bewusst den frueheren ungeprueften curl-\|-python-Download.
 alias passwort='openssl rand -base64 24 | tr -d '=+/' | head -c 32'
 
 # SSH-Key-Management

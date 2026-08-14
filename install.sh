@@ -4,14 +4,18 @@
 # ------------------------------------------------------------------------------
 #  Datei         : install.sh
 #  Beschreibung  : Installiert alle Module aus bashrc.d/*.sh nach
-#                  $HOME/.bashrc.d/ (Bestehende Zieldateien werden vor dem
-#                  Ueberschreiben nach <datei>.bak/.bak1/.bak2/... gesichert -
-#                  erste freie Nummer gewinnt, nichts wird ueberschrieben).
-#                  Haengt zusaetzlich einen Loader-Block an die bestehende,
-#                  originale ~/.bashrc an (idempotent per Marker-Kommentar,
-#                  kein Ueberschreiben/Ersetzen der Datei), der die Module
-#                  aus ~/.bashrc.d/*.sh beim Shellstart per 'source' laedt.
-#                  Laedt .bashrc anschliessend neu, falls moeglich.
+#                  $HOME/.bashrc.d/ sowie die Tools aus tools/*/*.sh nach
+#                  $HOME/.local/lib/system_id/tools/bash/ (Bestehende
+#                  Zieldateien werden vor dem Ueberschreiben nach
+#                  <datei>.bak/.bak1/.bak2/... gesichert - erste freie Nummer
+#                  gewinnt, nichts wird ueberschrieben). Haengt zusaetzlich
+#                  einen Loader-Block an die bestehende, originale ~/.bashrc
+#                  an (idempotent per Marker-Kommentar, kein Ueberschreiben/
+#                  Ersetzen der Datei), der die Module aus ~/.bashrc.d/*.sh
+#                  beim Shellstart per 'source' laedt - eines dieser Module
+#                  (80-tools.sh) bindet die installierten Tools als
+#                  Shell-Funktionen ein. Laedt .bashrc anschliessend neu,
+#                  falls moeglich.
 #  Repository    : bash
 #  Autor         : Michael Simon
 #  Unternehmen   : System_ID
@@ -78,16 +82,19 @@ backup_existing() {
   log "INFO" "Backup erstellt: ${dest} -> ${backup}"
 }
 
-# install_file <quelle> <ziel>
+# install_file <quelle> <ziel> [modus]
 #   Sichert eine vorhandene Zieldatei und kopiert die Quelle an ihre Stelle.
-#   Setzt anschliessend 0644 auf die Zieldatei.
+#   Setzt anschliessend den angegebenen Modus (Default 0644) auf die
+#   Zieldatei - Tool-Skripte werden mit 0755 installiert, damit sie direkt
+#   ausfuehrbar sind.
 #   Parameter:
 #     $1 - absoluter Pfad zur Quelldatei im Repo
 #     $2 - absoluter Zielpfad
+#     $3 - optionaler chmod-Modus (Default: 0644)
 #   Rueckgabewert: 0 bei Erfolg; bricht das Skript ueber set -e ab, falls
 #                  Quelle fehlt oder cp/chmod fehlschlaegt
 install_file() {
-  local src="$1" dest="$2"
+  local src="$1" dest="$2" mode="${3:-0644}"
 
   if [ ! -f "$src" ]; then
     log "ERROR" "Quelldatei fehlt: ${src}"
@@ -96,7 +103,7 @@ install_file() {
 
   backup_existing "$dest"
   cp -- "$src" "$dest"
-  chmod 0644 -- "$dest"
+  chmod "$mode" -- "$dest"
   log "INFO" "Installiert: ${dest} (aus ${src})"
 }
 
@@ -149,6 +156,32 @@ fi
 
 for module_src in "${modules[@]}"; do
   install_file "$module_src" "${home_bashrc_d}/$(basename -- "$module_src")"
+done
+
+# tools/*/*.sh -> $HOME/.local/lib/system_id/tools/bash/<tool>/*.sh
+# Gleiche Verzeichnisstruktur wie im Repo (inkl. lib/lib_common.sh), damit
+# das bestehende relative 'source "${script_dir}/../lib/lib_common.sh"' in
+# den Tool-Skripten unveraendert funktioniert. bashrc.d/80-tools.sh bindet
+# die installierten Tools anschliessend als Shell-Funktionen ein.
+readonly home_tools_dir="${HOME}/.local/lib/system_id/tools/bash"
+
+shopt -s nullglob
+tool_scripts=("${script_dir}"/tools/*/*.sh)
+shopt -u nullglob
+
+if [ "${#tool_scripts[@]}" -eq 0 ]; then
+  log "ERROR" "Keine Tools gefunden unter ${script_dir}/tools/*/*.sh"
+  exit 1
+fi
+
+for tool_src in "${tool_scripts[@]}"; do
+  tool_name="$(basename -- "$(dirname -- "$tool_src")")"
+  mkdir -p -- "${home_tools_dir}/${tool_name}"
+  if [ "$tool_name" = "lib" ]; then
+    install_file "$tool_src" "${home_tools_dir}/${tool_name}/$(basename -- "$tool_src")"
+  else
+    install_file "$tool_src" "${home_tools_dir}/${tool_name}/$(basename -- "$tool_src")" 0755
+  fi
 done
 
 append_bashrc_loader
