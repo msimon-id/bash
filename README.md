@@ -80,7 +80,8 @@ ln -sf ../../tools/security/pre-push.sh .git/hooks/pre-push
 
 Jedes Teilskript ist auch einzeln aufrufbar, z. B.
 `./tools/security/check_permissions.sh --check-only` fuer eine reine
-Pruefung ohne automatisches `chmod` (z. B. in CI).
+Pruefung ohne automatisches `chmod` - genau dieser Modus laeuft auch im
+CI-Job `security-tooling` (siehe unten).
 
 ## Qualitätssicherung
 
@@ -91,12 +92,23 @@ Jeder Push/Pull-Request durchläuft die CI-Pipeline (`.github/workflows/ci.yml`)
 - **bats-core** über `tests/*.bats` - aktuell die Input-Validierungsfunktionen
   aus `tools/lib/lib_common.sh` (u. a. `is_valid_ipv4`, `is_valid_hostname`,
   `is_public_hostname` als Regressionstest für den SSRF-Schutz).
+- **security-tooling** führt die Pre-Push-Sicherheitskette gegen das
+  Repository selbst aus: `check_permissions.sh --check-only` (reine Prüfung,
+  kein `chmod`) und `scan_secrets.sh` gegen die volle Commit-Historie
+  (`fetch-depth: 0`). `gitleaks` wird dafür versionsgepinnt und
+  Checksum-verifiziert installiert.
+- **install-smoke-test** installiert `install.sh` dreifach in ein isoliertes
+  temporäres `$HOME` und verifiziert Zielpfade, den einmaligen
+  Loader-Marker in `~/.bashrc` sowie die Backup-Nummerierung
+  (`.bak` → `.bak1`).
 
 Lokal ausführen:
 
 ```bash
 shellcheck --shell=bash -x -P SCRIPTDIR $(find . -name '*.sh' -not -path './.git/*')
 bats tests/
+./tools/security/check_permissions.sh --check-only
+./tools/security/scan_secrets.sh
 ```
 
 ## Hinweise
