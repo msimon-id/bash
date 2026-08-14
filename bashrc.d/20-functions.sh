@@ -135,18 +135,6 @@ mem() {
 # Disk-Auslastung
 disk() { df -h / | tail -1 | awk '{print "Disk: " $3 " / " $2 " (" $5 ")"}'; }
 
-# Externe IPv4/IPv6 + Reverse-Hostname
-# (myip.is hat keine API zum Scripten; ipify + ipinfo liefern dieselbe Info als Klartext)
-myipis() {
-    local ip4 ip6 rhost
-    ip4=$(curl -s -4 --max-time 3 https://api.ipify.org)
-    ip6=$(curl -s -6 --max-time 3 https://api6.ipify.org)
-    rhost=$(curl -s --max-time 3 https://ipinfo.io/hostname)
-    echo "IPv4:     ${ip4:-nicht verfuegbar}"
-    echo "IPv6:     ${ip6:-nicht verfuegbar}"
-    echo "Hostname: ${rhost:-nicht verfuegbar}"
-}
-
 # 4. TEXT & SUCHE
 # ===============================
 
