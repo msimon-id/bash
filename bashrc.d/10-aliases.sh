@@ -369,8 +369,6 @@ alias scripts='cd /root/scripts'
 alias etc='cd /etc'
 alias opt='cd /opt'
 alias logs='cd /var/log'
-alias sss='sleep 8 && grim -g "$(slurp)" /home/$USER/Pictures/screenshots/$(date +%F_%H-%M-%S).png'
-alias ssc='grim -g "$(slurp)" - | wl-copy'
 
 # ----[ 17. ADMIN TOOLS ]-----------------------------------
 alias sshconfig='sudo nano /etc/ssh/sshd_config'
@@ -592,6 +590,17 @@ alias cronsys='sudo nano /etc/crontab'
 alias cronstatus='sudo systemctl status cron 2>/dev/null || sudo systemctl status crond'
 alias cronrestart='sudo systemctl restart cron 2>/dev/null || sudo systemctl restart crond'
 # Live-Log fuer Cron-Jobs: siehe 'logcron' (Abschnitt 15)
+
+# ----[ 24. DESKTOP / WAYLAND (Screenshots) ]------------------
+# Passt thematisch nicht zum sonstigen Admin-/Server-Fokus dieser Datei -
+# eigener Abschnitt statt versteckt unter "16. SHORTCUTS & NAVIGATION",
+# und hinter einem Existenz-Guard, da grim/slurp nur auf einem Wayland-
+# Desktop (z.B. labwc auf SID-HOME-001) vorhanden sind, nicht auf reinen
+# Server-Hosts.
+if command -v grim >/dev/null 2>&1 && command -v slurp >/dev/null 2>&1; then
+    alias sss='sleep 8 && grim -g "$(slurp)" /home/$USER/Pictures/screenshots/$(date +%F_%H-%M-%S).png'
+    alias ssc='grim -g "$(slurp)" - | wl-copy'
+fi
 
 # ==========================================================
 #   ENDE DER ALIASE
