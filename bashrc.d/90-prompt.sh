@@ -52,8 +52,14 @@ if [ -t 1 ]; then
     DIM="\[\033[2m\]"
     RESET="\[\033[0m\]"
 
-    # Optional: Truecolor (24-bit) fuer moderne Terminals
-    # RED="\[\033[38;2;255;0;0m\]"
+    # Truecolor (24-bit) fuer die Prompt-Elemente unten - feste Hexwerte
+    # statt 256-Palette, da fuer diese Elemente exakte Markenfarben
+    # vorgegeben sind.
+    PROMPT_USER="\[\033[38;2;0;229;160m\]"    # #00e5a0
+    PROMPT_AT="\[\033[38;2;232;234;237m\]"    # #e8eaed
+    PROMPT_HOST="\[\033[38;2;0;229;160m\]"    # #00e5a0
+    PROMPT_PATH="\[\033[38;2;232;234;237m\]"  # #e8eaed
+    PROMPT_EXIT="\[\033[38;2;0;87;255m\]"     # #0057ff
 else
     RED=""
     GREEN=""
@@ -74,17 +80,19 @@ else
     BOLD=""
     DIM=""
     RESET=""
+    PROMPT_USER=""
+    PROMPT_AT=""
+    PROMPT_HOST=""
+    PROMPT_PATH=""
+    PROMPT_EXIT=""
 fi
 
-# Farbiger dynamischer Prompt mit Exitcodeanzeige. Nutzer in TEAL (dunkleres
-# Cyan, gleiche Farbfamilie wie der Hostname), "@" gedimmt statt farbig
-# (reine Trenn-/Strukturmarkierung, kein eigenes Element), Hostname in CYAN,
-# Pfad in GRAY - ein zusammenhaengender Block statt eines Farbmix wie zuvor
-# (CYAN + GREEN). Die Exitcode-Klammer bleibt bewusst GELB/ROT: das ist ein
-# Warnsignal, kein Deko-Element, und soll sich gerade farblich abheben.
+# Farbiger dynamischer Prompt mit Exitcodeanzeige, feste Hexfarben je
+# Element (PROMPT_* oben): Nutzer/Hostname #00e5a0, "@" und Pfad #e8eaed,
+# Exitcode-Klammer #0057ff.
 PROMPT_COMMAND='RET=$?; [ "$RET" = "0" ] && RET="";'
-PROMPT_COMMAND+='PS1="\n${TEAL}\u${RESET}${DIM}@${RESET}${CYAN}\h${RESET}${GRAY}:\w${RESET} '
-PROMPT_COMMAND+='${RET:+${YELLOW}[${RED}${RET}${YELLOW}]${RESET} }${RESET}\n\\$ "'
+PROMPT_COMMAND+='PS1="\n${PROMPT_USER}\u${RESET}${PROMPT_AT}@${RESET}${PROMPT_HOST}\h${RESET}${PROMPT_PATH}:\w${RESET} '
+PROMPT_COMMAND+='${RET:+${PROMPT_EXIT}[${RET}]${RESET} }${RESET}\n\\$ "'
 
 # enable color support of ls and also add handy aliases
 if [ -x /usr/bin/dircolors ]; then
